@@ -448,12 +448,12 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
   .action-copy strong { font-size:9px; }
 }
 
-/* Guthabenanzeige: Statuszeilen entfallen, digitaler Betrag wird betont. */
+/* Guthabenanzeige: Statuszeilen entfallen, digitaler Betrag wird deutlich betont. */
 .balance-status-row,
 .saldo-subtext { display:none !important; }
-.saldo-amount { font-size:30px !important; letter-spacing:0 !important; }
+.saldo-amount { font-size:39px; letter-spacing:0; }
 @media (max-width:340px) {
-  .saldo-amount { font-size:27px !important; }
+  .saldo-amount { font-size:35px; }
 }
 
 </style>
@@ -553,8 +553,8 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
               </g>
               <circle class="gauge-hub" cx="130" cy="127" r="8"/>
               <!-- Digitalanzeige bewusst tiefer als die Zeigernabe. -->
-              <rect class="gauge-digital" x="62" y="150" width="136" height="42" rx="7"/>
-              <text id="my-saldo" class="saldo-amount" x="130" y="171">0,00 €</text>
+              <rect class="gauge-digital" x="38" y="144" width="184" height="50" rx="8"/>
+              <text id="my-saldo" class="saldo-amount" x="130" y="169">0,00 €</text>
               <text x="130" y="210" fill="#b8d0df" font-size="9" font-weight="900" text-anchor="middle" letter-spacing="1.6">GUTHABEN</text>
             </svg>
           </div>
@@ -1317,7 +1317,18 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
     function updateSaldoDisplay() {
         const saldoElement = document.getElementById('my-saldo');
         const saldoBox = document.querySelector('.saldo-box');
-        saldoElement.textContent = meinSaldo.toFixed(2).replace('.', ',') + " €";
+        const saldoText = meinSaldo.toFixed(2).replace('.', ',') + " €";
+        saldoElement.textContent = saldoText;
+        // Große Guthabenwerte bleiben innerhalb des verbreiterten Digitalfensters lesbar.
+        saldoElement.style.fontSize = "39px";
+        try {
+            const measuredWidth = saldoElement.getComputedTextLength();
+            const availableWidth = 168;
+            if (measuredWidth > availableWidth) {
+                const fittedSize = Math.max(27, 39 * availableWidth / measuredWidth);
+                saldoElement.style.fontSize = `${fittedSize.toFixed(1)}px`;
+            }
+        } catch (_) { /* Fallback bleibt die große CSS-Schrift. */ }
         updateBalanceGauge();
         if (saldoBox) saldoBox.classList.toggle('saldo-negative', meinSaldo < 0);
         const negativeFlag = document.getElementById("balanceNegativeFlag");
