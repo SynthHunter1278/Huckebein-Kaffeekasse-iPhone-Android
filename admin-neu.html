@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kaffeekasse Admin</title>
+    <style>
+        :root { color-scheme: dark; --bg:#0f172a; --panel:#1e293b; --panel-2:#263449; --line:#3b4b63; --text:#f8fafc; --muted:#a9b8cc; --accent:#38bdf8; --accent-dark:#075985; }
+        * { box-sizing:border-box; }
+        body { font-family:Arial,sans-serif; margin:0; padding:22px; background:radial-gradient(ellipse at top left,#1e3a5f 0,#0f172a 48%,#0b1220 100%); color:var(--text); min-height:100vh; }
+        .app-shell { width:min(1220px,100%); margin:0 auto; display:grid; grid-template-columns:250px minmax(0,1fr); gap:20px; align-items:start; }
+        .sidebar { position:sticky; top:22px; background:rgba(30,41,59,.96); border:1px solid var(--line); border-radius:18px; padding:20px 14px; box-shadow:0 12px 34px rgba(0,0,0,.24); }
+        .brand { padding:4px 10px 18px; border-bottom:1px solid var(--line); margin-bottom:17px; }
+        .brand-mark { font-size:25px; margin-bottom:7px; }
+        .brand-name { color:var(--accent); font-size:19px; font-weight:800; letter-spacing:.5px; }
+        .brand-sub { color:var(--muted); font-size:10px; letter-spacing:1.8px; margin-top:4px; }
+        .nav-label { color:#74869f; font-size:10px; font-weight:800; letter-spacing:1.5px; padding:0 10px 9px; }
+        .admin-nav { display:grid; gap:7px; }
+        .nav-button { width:100%; display:flex; align-items:center; gap:11px; text-align:left; border:1px solid transparent; border-radius:11px; padding:11px 10px; background:transparent; color:#dbe7f5; cursor:pointer; transition:background .18s,border-color .18s,transform .18s; }
+        .nav-button:hover { background:#33465f; }
+        .nav-button.active { background:linear-gradient(110deg,#0c4a6e,#164e63); border-color:#0ea5e9; color:#fff; box-shadow:inset 3px 0 #38bdf8; }
+        .nav-icon { width:32px; height:32px; flex:0 0 32px; display:grid; place-items:center; border-radius:9px; background:rgba(148,163,184,.13); font-size:18px; }
+        .nav-button.active .nav-icon { background:rgba(56,189,248,.2); }
+        .nav-copy { display:grid; gap:3px; }
+        .nav-copy strong { font-size:13px; }
+        .nav-copy small { color:#9fb0c5; font-size:10px; line-height:1.25; }
+        .sidebar-foot { border-top:1px solid var(--line); margin:18px 8px 0; padding-top:13px; color:#8193aa; font-size:10px; line-height:1.5; }
+        .main-area { min-width:0; background:rgba(30,41,59,.94); border:1px solid var(--line); border-radius:18px; padding:24px; box-shadow:0 12px 34px rgba(0,0,0,.24); }
+        .page-top { display:flex; justify-content:space-between; align-items:center; gap:16px; padding-bottom:17px; border-bottom:1px solid var(--line); margin-bottom:16px; }
+        .eyebrow { color:var(--accent); font-size:10px; font-weight:800; letter-spacing:1.7px; margin:0 0 6px; }
+        h1 { margin:0; color:#fff; font-size:25px; }
+        .page-description { color:var(--muted); font-size:13px; margin:6px 0 0; line-height:1.45; }
+        .connection-pill { flex:0 0 auto; border:1px solid #36536b; border-radius:30px; padding:8px 11px; color:#b9d8e8; font-size:11px; white-space:nowrap; background:#142c40; }
+        .connection-pill span { color:#4ade80; margin-right:5px; }
+        .status { padding:12px 14px; border-radius:9px; text-align:left; font-weight:bold; margin:0 0 16px; display:none; font-size:13px; line-height:1.45; }
+        .status-success { background:#14532d; color:#dcfce7; border:1px solid #15803d; }
+        .status-error { background:#7f1d1d; color:#fee2e2; border:1px solid #dc2626; }
+        .page-panel[hidden] { display:none !important; }
+        .page-panel { display:grid; gap:15px; }
+        .content-card { background:linear-gradient(145deg,#26364c,#223047); border:1px solid #40516a; border-radius:14px; padding:18px; min-width:0; }
+        .content-card h2 { font-size:13px; text-transform:uppercase; color:#a9c5dc; letter-spacing:.6px; border-bottom:1px solid #40516a; padding-bottom:9px; margin:0 0 15px; }
+        .form-group { margin-bottom:14px; }
+        label { display:block; font-size:12px; font-weight:bold; margin-bottom:6px; color:#d3deeb; }
+        input[type="text"],input[type="number"],input[type="date"],select { width:100%; padding:11px 12px; border-radius:8px; border:1px solid #52647d; background:#111e30; color:white; font-size:15px; outline:none; }
+        input:focus,select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(56,189,248,.13); }
+        .btn-publish { width:100%; padding:13px; border:0; border-radius:9px; background:#16a34a; color:#fff; font-size:14px; font-weight:bold; cursor:pointer; margin:8px 0 12px; }
+        .btn-publish:hover { background:#15803d; }
+        .btn-publish:disabled { opacity:.6; cursor:wait; }
+        .btn-resend { width:100%; padding:12px; border:1px solid #60a5fa; border-radius:9px; background:#1d4ed8; color:#fff; font-size:13px; font-weight:bold; cursor:pointer; margin:0 0 12px; }
+        .btn-resend:disabled { opacity:.6; cursor:wait; }
+        .small-note { font-size:11px; color:#b9c8d9; line-height:1.5; margin:8px 0 0; }
+        .settlement-preview { background:#142237; border:1px solid #465a73; border-radius:9px; padding:12px; margin:8px 0; color:#e2e8f0; font-size:13px; line-height:1.5; }
+        .flex-group { display:flex; align-items:center; gap:10px; }
+        .flex-group > span { color:#e2e8f0; font-size:13px; line-height:1.4; }
+        .switch { position:relative; display:inline-block; width:44px; height:24px; min-width:44px; margin:0; }
+        .switch input { opacity:0; width:0; height:0; }
+        .slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#52647d; transition:.3s; border-radius:24px; }
+        .slider:before { position:absolute; content:""; height:16px; width:16px; left:4px; bottom:4px; background-color:white; transition:.3s; border-radius:50%; }
+        .switch input:checked + .slider { background-color:#0284c7; }
+        .switch input:checked + .slider:before { transform:translateX(20px); }
+        .price-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px 14px; }
+        .price-grid .form-group { margin-bottom:4px; }
+        .availability-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px 14px; }
+        .availability-item { display:flex; align-items:center; gap:8px; min-height:34px; color:#d3deeb; font-size:12px; font-weight:bold; }
+        .availability-item label { flex:0 0 44px; margin:0; }
+        .overview-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+        .overview-tile { border:1px solid #40516a; border-radius:11px; background:#1c2b40; padding:13px; }
+        .overview-tile strong { display:block; font-size:13px; color:#eaf6ff; margin-bottom:4px; }
+        .overview-tile span { color:#aebed0; font-size:11px; line-height:1.4; }
+        .logout-link { display:block; text-align:left; margin-top:13px; font-size:12px; color:#7dd3fc; cursor:pointer; text-decoration:underline; }
+        .global-actions { position:sticky; bottom:0; z-index:5; margin:18px -24px -24px; padding:14px 24px 18px; border-radius:0 0 18px 18px; background:rgba(18,31,49,.97); border-top:1px solid #40516a; backdrop-filter:blur(12px); }
+        .btn-save { width:100%; max-width:520px; display:block; margin:0 auto; padding:14px 18px; background:linear-gradient(100deg,#0284c7,#0369a1); color:white; border:1px solid #38bdf8; border-radius:10px; font-size:15px; font-weight:bold; cursor:pointer; box-shadow:0 5px 15px rgba(2,132,199,.2); }
+        .btn-save:hover { background:#0369a1; }
+        .btn-save:disabled { opacity:.65; cursor:wait; }
+        .overview-lead { color:#e2e8f0; font-size:14px; line-height:1.55; margin:0 0 14px; }
+        @media (max-width:900px) {
+            body { padding:12px; }
+            .app-shell { grid-template-columns:1fr; gap:12px; }
+            .sidebar { position:relative; top:auto; padding:13px; }
+            .brand { padding:2px 5px 11px; margin-bottom:11px; }
+            .brand-mark { display:none; }
+            .brand-name { font-size:17px; }
+            .admin-nav { grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; }
+            .nav-button { display:flex; flex-direction:column; justify-content:center; text-align:center; gap:5px; padding:9px 4px; min-height:72px; }
+            .nav-icon { width:27px; height:27px; flex-basis:27px; font-size:15px; }
+            .nav-copy strong { font-size:10px; }
+            .nav-copy small,.nav-label,.sidebar-foot { display:none; }
+            .main-area { padding:18px; }
+            .global-actions { margin:16px -18px -18px; padding:12px 18px 15px; }
+        }
+        @media (max-width:560px) {
+            body { padding:8px; }
+            .admin-nav { grid-template-columns:repeat(3,minmax(0,1fr)); }
+            .nav-button { min-height:64px; }
+            .main-area { padding:14px; border-radius:14px; }
+            .page-top { align-items:flex-start; }
+            h1 { font-size:21px; }
+            .connection-pill { font-size:0; padding:8px 10px; }
+            .connection-pill span { font-size:12px; margin:0; }
+            .content-card { padding:14px; }
+            .price-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 10px; }
+            .availability-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+            .availability-item { font-size:11px; }
+            .overview-grid { grid-template-columns:1fr; }
+            .global-actions { margin:14px -14px -14px; padding:11px 14px 13px; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark">☕</div>
+            <div class="brand-name">HANS HUCKEBEIN</div>
+            <div class="brand-sub">KAFFEEKASSE · ADMIN</div>
+        </div>
+        <div class="nav-label">VERWALTUNG</div>
+        <nav class="admin-nav" aria-label="Admin-Bereiche">
+            <button type="button" class="nav-button active" data-admin-page="overview" onclick="showAdminPage('overview')"><span class="nav-icon">⌂</span><span class="nav-copy"><strong>Übersicht</strong><small>Status & Zugang</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="sortiment" onclick="showAdminPage('sortiment')"><span class="nav-icon">☕</span><span class="nav-copy"><strong>Sortiment</strong><small>Produkte & Preise</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="aufladen" onclick="showAdminPage('aufladen')"><span class="nav-icon">€</span><span class="nav-copy"><strong>Aufladen</strong><small>PayPal-Funktion</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="aktionen" onclick="showAdminPage('aktionen')"><span class="nav-icon">★</span><span class="nav-copy"><strong>Aktionen</strong><small>Gratiskaffee</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="abrechnung" onclick="showAdminPage('abrechnung')"><span class="nav-icon">▤</span><span class="nav-copy"><strong>Abrechnung</strong><small>Abrechnung & Nachrichten</small></span></button>
+        </nav>
+        <div class="sidebar-foot">Live-Verwaltung über GitHub<br>Änderungen werden gemeinsam veröffentlicht.</div>
+    </aside>
+
+    <main class="main-area">
+        <header class="page-top">
+            <div>
+                <p class="eyebrow">HANS HUCKEBEIN · ADMINISTRATION</p>
+                <h1 id="pageTitle">Übersicht</h1>
+                <p class="page-description" id="pageDescription">Status, Zugang und zentrale Speicherfunktion deiner Kaffeekasse.</p>
+            </div>
+            <div class="connection-pill"><span>●</span> Live-Konfiguration</div>
+        </header>
+        <div id="statusBox" class="status" role="status" aria-live="polite"></div>
+
+        <div id="adminForm">
+            <section class="page-panel" data-admin-panel="overview">
+                <div class="content-card">
+                    <h2>Willkommen im Admin-Bereich</h2>
+                    <p class="overview-lead">Alle Einstellungen sind jetzt in getrennten Bereichen organisiert. Wähle links oder oben den gewünschten Bereich. Deine Änderungen bleiben beim Wechsel zwischen den Bereichen erhalten.</p>
+                    <div class="overview-grid">
+                        <div class="overview-tile"><strong>☕ Sortiment</strong><span>Verkaufsprodukte ein- oder ausblenden und Preise bearbeiten.</span></div>
+                        <div class="overview-tile"><strong>💳 Aufladen</strong><span>Die PayPal-Aufladung für die Kassen-App freigeben oder sperren.</span></div>
+                        <div class="overview-tile"><strong>🎁 Aktionen</strong><span>Eine Gratis-Kaffeeaktion mit Spender und Aktionsdatum einrichten.</span></div>
+                        <div class="overview-tile"><strong>🧾 Abrechnung</strong><span>Gezählte Kaffees abrechnen, erneut zustellen und Nutzer informieren.</span></div>
+                    </div>
+                    <p class="small-note">Wichtig: Der Button „Speichern & Live schalten“ am unteren Rand veröffentlicht die Änderungen aus allen Bereichen gemeinsam in config.json. Du musst dafür nicht zur Übersicht zurückkehren.</p>
+                </div>
+                <div class="content-card">
+                    <h2>GitHub-Zugang</h2>
+                    <span class="logout-link" onclick="changeCredentials()">GitHub-Token ändern</span>
+        <span class="logout-link" onclick="clearCredentials()">Gespeicherten Token löschen / abmelden</span>
+        <p style="font-size:12px;color:#cbd5e1;line-height:1.45;text-align:center;">Der GitHub-Token wird auf diesem Gerät in diesem Browser gespeichert. Auf PC, Android und iPhone muss er jeweils einmal eingegeben werden. Für das Speichern wird ein Fine-grained Token mit Contents: Read and write benötigt.</p>
+                </div>
+            </section>
+
+            <section class="page-panel" data-admin-panel="sortiment" hidden>
+                <div class="content-card">
+                    <h2>☕ Live-Preise ändern (€)</h2>
+        <div class="price-grid">
+            <div class="form-group"><label>Kaffee:</label><input type="number" step="0.01" id="p_kaffee"></div>
+            <div class="form-group"><label>Cappuccino:</label><input type="number" step="0.01" id="p_cappuccino"></div>
+            <div class="form-group"><label>Wasser 0.7L:</label><input type="number" step="0.01" id="p_wasser"></div>
+            <div class="form-group"><label>Softdrink 0.33L:</label><input type="number" step="0.01" id="p_soft33"></div>
+            <div class="form-group"><label>Softdrink 0.5L:</label><input type="number" step="0.01" id="p_soft5"></div>
+            <div class="form-group"><label>Schokoriegel kl.:</label><input type="number" step="0.01" id="p_schokokl"></div>
+            <div class="form-group"><label>Schokoriegel gr.:</label><input type="number" step="0.01" id="p_schokogr"></div>
+            <div class="form-group"><label>Eiscreme:</label><input type="number" step="0.01" id="p_eis"></div>
+            <div class="form-group"><label>Frühstück:</label><input type="number" step="0.01" id="p_fruehstueck"></div>
+        </div>
+                </div>
+                <div class="content-card">
+                    <h2>📦 Produktverfügbarkeit</h2>
+        <p style="font-size:12px;color:#cbd5e1;line-height:1.4;margin-top:-5px;">Nicht verfügbare Produkte abwählen. Sie werden anschließend in der Kassen-App ausgeblendet.</p>
+        <div class="availability-grid">
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_kaffee" checked><span class="slider"></span></label><span>Kaffee anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_cappuccino" checked><span class="slider"></span></label><span>Cappuccino anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_wasser" checked><span class="slider"></span></label><span>Wasser anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_soft33" checked><span class="slider"></span></label><span>Softdrink 0,33L anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_soft5" checked><span class="slider"></span></label><span>Softdrink 0,5L anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_schokokl" checked><span class="slider"></span></label><span>Schokoriegel klein anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_schokogr" checked><span class="slider"></span></label><span>Schokoriegel groß anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_eis" checked><span class="slider"></span></label><span>Eiscreme anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_fruehstueck" checked><span class="slider"></span></label><span>Frühstück anzeigen</span></div>
+        </div>
+                </div>
+            </section>
+
+            <section class="page-panel" data-admin-panel="aufladen" hidden>
+                <div class="content-card">
+                    <h2>💳 PayPal-Aufladung</h2>
+        <div class="form-group flex-group">
+            <label class="switch">
+                <input type="checkbox" id="paypalActive" checked>
+                <span class="slider"></span>
+            </label>
+            <span>PayPal-Aufladung in der Kassen-App erlauben</span>
+        </div>
+        <p style="font-size:12px;color:#cbd5e1;line-height:1.4;margin-top:-8px;">Bei ausgeschalteter Option wird der PayPal-Button in der Kassen-App ausgeblendet und eine neue PayPal-Aufladung verhindert. Die Bar-Aufladung bleibt verfügbar.</p>
+                </div>
+            </section>
+
+            <section class="page-panel" data-admin-panel="aktionen" hidden>
+                <div class="content-card">
+                    <h2>☕ Freikaffee-Aktion</h2>
+        <div class="form-group flex-group">
+            <label class="switch">
+                <input type="checkbox" id="freeCoffeeActive">
+                <span class="slider"></span>
+            </label>
+            <span>Aktion aktiv (ein Gratis-Becher pro Teilnehmer)</span>
+        </div>
+        <div class="form-group">
+            <label for="freeCoffeeGiver">App-Anmeldename des Kaffeespenders:</label>
+            <input type="text" id="freeCoffeeGiver" placeholder="z. B. Pete" autocomplete="off">
+            <p class="small-note">Den Namen exakt so eintragen, wie er in der Spenderanmeldung per E-Mail steht. Nur diese Kassen-App erhält später die persönliche Abrechnung.</p>
+        </div>
+        <div class="form-group">
+            <label for="freeCoffeeDate">Tag der Kaffeeaktion:</label>
+            <input type="date" id="freeCoffeeDate">
+        </div>
+        <p class="small-note">Am eingetragenen Tag kann jeder Teilnehmer über seine Kassen-App einmalig einen Becher Automatenkaffee von 06:00 bis 15:00 Uhr kostenlos abrufen. Weitere Kaffees und andere Produkte bleiben kostenpflichtig.</p>
+                </div>
+            </section>
+
+            <section class="page-panel" data-admin-panel="abrechnung" hidden>
+                <div class="content-card">
+                    <h2>🧾 Kaffee-Spenden-Abrechnung</h2>
+        <div class="form-group">
+            <label for="birthdayCoffeeCount">Gezählte Gratis-Kaffees (aus den E-Mails):</label>
+            <input type="number" id="birthdayCoffeeCount" min="1" max="1000" step="1" placeholder="z. B. 24">
+        </div>
+        <div class="settlement-preview" id="birthdaySettlementPreview">Bitte nach Ende der Freiphase die Entnahmemeldungen zählen und die Anzahl eintragen.</div>
+        <button type="button" class="btn-publish" id="publishBirthdayButton" onclick="publishBirthdaySettlement()">🧾 Abrechnung veröffentlichen</button>
+        <button type="button" class="btn-resend" id="resendBirthdayButton" onclick="resendBirthdaySettlement()">↻ Vorhandene Abrechnung erneut zustellen</button>
+        <p class="small-note">„Erneut zustellen“ veröffentlicht dieselbe offene Abrechnung mit derselben Abrechnungs-ID erneut. Dadurch wird sie auf dem Spendergerät erneut abgefragt, ohne auf demselben Gerät ein zweites Mal abzubuchen.</p>
+        <p class="small-note">Die Admin-App berechnet den Betrag aus Anzahl × normalem Kaffeepreis und veröffentlicht ihn in config.json. Der Spender bestätigt die Abbuchung in seiner eigenen Kassen-App.</p>
+                </div>
+                <div class="content-card">
+                    <h2>📢 Nachricht an alle</h2>
+        <div class="form-group flex-group">
+            <label class="switch">
+                <input type="checkbox" id="msgActive">
+                <span class="slider"></span>
+            </label>
+            <span>Nachricht einblenden</span>
+        </div>
+        <div class="form-group">
+            <label for="msgText">Nachrichten-Text:</label>
+            <input type="text" id="msgText" placeholder="z. B. Bitte Kaffeemaschine reinigen!">
+        </div>
+        <div class="form-group">
+            <label for="msgColor">Banner-Farbe:</label>
+            <select id="msgColor">
+                <option value="blue">Info-Blau</option>
+                <option value="red">Warnung-Rot</option>
+            </select>
+        </div>
+                </div>
+            </section>
+
+            <div class="global-actions">
+                <button class="btn-save" onclick="saveAndPushConfig()" disabled>⏳ Live-Daten werden geladen...</button>
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+
+    // Navigation: Es wird immer nur ein Admin-Bereich angezeigt.
+    const adminPageInfo = {
+        overview: { title: "Übersicht", description: "Status, Zugang und zentrale Speicherfunktion deiner Kaffeekasse." },
+        sortiment: { title: "Sortiment", description: "Produkte sichtbar schalten und Verkaufspreise bearbeiten." },
+        aufladen: { title: "Aufladen", description: "Die PayPal-Aufladung in der Kassen-App verwalten." },
+        aktionen: { title: "Aktionen", description: "Die Gratis-Kaffeeaktion einrichten und steuern." },
+        abrechnung: { title: "Abrechnung & Kommunikation", description: "Kaffeeabrechnungen verwalten und Nachrichten veröffentlichen." }
+    };
+    function showAdminPage(page) {
+        if (!adminPageInfo[page]) return;
+        document.querySelectorAll("[data-admin-panel]").forEach(panel => {
+            panel.hidden = panel.dataset.adminPanel !== page;
+        });
+        document.querySelectorAll("[data-admin-page]").forEach(button => {
+            const active = button.dataset.adminPage === page;
+            button.classList.toggle("active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
+        document.getElementById("pageTitle").textContent = adminPageInfo[page].title;
+        document.getElementById("pageDescription").textContent = adminPageInfo[page].description;
+    }
+
+    // Der Token wird getrennt je Gerät und Browserprofil gespeichert.
+    const TOKEN_STORAGE_KEY = "huckebein_admin_github_token";
+    let githubToken = "";
+    try { githubToken = localStorage.getItem(TOKEN_STORAGE_KEY) || ""; }
+    catch (_) { githubToken = ""; }
+
+    const githubUser = "SynthHunter1278";
+    const githubRepo = "Huckebein-Kaffeekasse-iPhone-Android";
+    const configPath = "config.json";
+    let currentSha = "";
+    let configLoaded = false;
+    let loadedConfig = {};
+
+    function checkCredentials() {
+        if (githubToken) return true;
+        const token = prompt("Bitte deinen GitHub Fine-grained Personal Access Token eingeben. Er wird anschließend auf diesem Gerät in diesem Browser gespeichert:");
+        if (!token || !token.trim()) {
+            showStatus("Kein Token eingegeben. Du kannst den Token über 'GitHub-Token ändern' erneut eingeben.", false);
+            return false;
+        }
+        githubToken = token.trim();
+        try {
+            localStorage.setItem(TOKEN_STORAGE_KEY, githubToken);
+        } catch (_) {
+            showStatus("Der Browser konnte den Token nicht dauerhaft speichern. Bitte Browser-Speicher erlauben.", false);
+            githubToken = "";
+            return false;
+        }
+        return true;
+    }
+
+    function apiUrl() {
+        return `https://api.github.com/repos/${githubUser}/${githubRepo}/contents/${configPath}`;
+    }
+
+    function decodeBase64Utf8(value) {
+        const bytes = Uint8Array.from(atob(value.replace(/\s/g, "")), c => c.charCodeAt(0));
+        return new TextDecoder("utf-8").decode(bytes);
+    }
+
+    // GitHub-API-Aufrufe können direkt nach dem Öffnen der Pages-Seite
+    // gelegentlich mit einem vorübergehenden Netzwerkfehler starten.
+    // Deshalb werden reine GET-Abfragen bei Netzwerkfehlern wiederholt.
+    async function fetchGetWithRetry(url, options, attempts = 3) {
+        let lastError;
+        for (let attempt = 1; attempt <= attempts; attempt++) {
+            try {
+                const response = await fetch(url, options);
+                // Vorübergehende GitHub-Serverfehler dürfen erneut versucht werden.
+                if (![502, 503, 504].includes(response.status) || attempt === attempts) return response;
+                lastError = new Error(`GitHub antwortet vorübergehend mit HTTP ${response.status}.`);
+            } catch (error) {
+                lastError = error;
+            }
+            if (attempt < attempts) await new Promise(resolve => setTimeout(resolve, 700 * attempt));
+        }
+        if (lastError && lastError.name === "TypeError") {
+            throw new Error("GitHub-API nicht erreichbar (Netzwerk-/CORS-Fehler). Bitte Admin-Seite über die GitHub-Pages-Adresse öffnen, Verbindung prüfen und erneut versuchen.");
+        }
+        throw lastError || new Error("GitHub ist momentan nicht erreichbar.");
+    }
+
+    function githubHeaders() {
+        return {
+            "Authorization": `Bearer ${githubToken}`,
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+        };
+    }
+
+    async function readApiJson(response) {
+        const raw = await response.text();
+        let data;
+        try { data = raw ? JSON.parse(raw) : {}; }
+        catch (_) { throw new Error(`GitHub lieferte keine gültige JSON-Antwort (HTTP ${response.status}).`); }
+        if (!response.ok) {
+            const detail = data.message || `HTTP ${response.status}`;
+            if (response.status === 401) throw new Error("GitHub-Token ungültig oder abgelaufen (HTTP 401).");
+            if (response.status === 403) throw new Error("GitHub verweigert den Zugriff (HTTP 403). Bitte Token-Berechtigung Contents: Read and write und Repository-Zugriff prüfen.");
+            if (response.status === 404) throw new Error("Repository oder config.json wurde nicht gefunden (HTTP 404). Bitte Repository-Name und Dateipfad prüfen.");
+            throw new Error(detail);
+        }
+        return data;
+    }
+
+    async function loadCurrentConfig() {
+        if (!checkCredentials()) return;
+        showStatus("Lade aktuelle Live-Daten...", true);
+        try {
+            const response = await fetchGetWithRetry(apiUrl() + "?cb=" + Date.now(), {
+                method: "GET",
+                headers: githubHeaders(),
+                cache: "no-store"
+            }, 3);
+            const data = await readApiJson(response);
+            if (!data.sha || !data.content) throw new Error("GitHub-Antwort enthält keine Dateidaten. Bitte prüfen, ob config.json im Hauptverzeichnis liegt.");
+            currentSha = data.sha;
+            const config = JSON.parse(decodeBase64Utf8(data.content));
+            loadedConfig = config;
+
+            const birthdayConfig = config.geburtstag || config.freeCoffee || {};
+            document.getElementById("freeCoffeeActive").checked = Boolean(birthdayConfig.aktiv ?? birthdayConfig.active);
+            document.getElementById("freeCoffeeGiver").value = birthdayConfig.spender || birthdayConfig.giver || "";
+            document.getElementById("freeCoffeeDate").value = birthdayConfig.datum || localDateString();
+            const existingSettlement = birthdayConfig.abrechnung || null;
+            document.getElementById("birthdayCoffeeCount").value = existingSettlement && existingSettlement.datum === document.getElementById("freeCoffeeDate").value ? existingSettlement.anzahl : "";
+            updateBirthdaySettlementPreview();
+            document.getElementById("msgActive").checked = Boolean(config.nachricht?.aktiv ?? config.message?.active);
+            document.getElementById("msgText").value = config.nachricht?.text || config.message?.text || "";
+            document.getElementById("msgColor").value = (config.nachricht?.typ === "warnung" || config.message?.color === "red") ? "red" : "blue";
+
+            const p = config.preise || config.prices || {};
+            const mapping = { kaffee:"btn-kaffee", cappuccino:"btn-cappuccino", wasser:"btn-wasser", soft33:"btn-soft33", soft5:"btn-soft5", schokokl:"btn-schokokl", schokogr:"btn-schokogr", eis:"btn-eis", fruehstueck:"btn-fruehstueck" };
+            for (const [key,id] of Object.entries(mapping)) {
+                const value = p[id] ?? p[key];
+                if (value !== undefined) document.getElementById("p_" + key).value = Number(value).toFixed(2);
+            }
+
+            const visibility = config.produkte?.anzeigen || config.productAvailability || {};
+            for (const key of Object.keys(mapping)) {
+                const productId = mapping[key];
+                document.getElementById("v_" + key).checked = visibility[productId] !== false;
+            }
+            document.getElementById("paypalActive").checked = Boolean(config.paypal?.aktiv ?? config.paypalEnabled ?? true);
+
+            configLoaded = true;
+            const saveButton = document.querySelector(".btn-save");
+            saveButton.disabled = false;
+            saveButton.textContent = "💾 Speichern & Live schalten";
+            showStatus("Live-Daten erfolgreich geladen.", true);
+        } catch (e) {
+            configLoaded = false;
+            const saveButton = document.querySelector(".btn-save");
+            saveButton.disabled = true;
+            saveButton.textContent = "⏳ Erst Live-Daten laden";
+            showStatus("Laden fehlgeschlagen: " + e.message + " Bitte Admin-Seite neu laden und Token/Berechtigung prüfen.", false);
+        }
+    }
+
+    async function saveAndPushConfig() {
+        if (!checkCredentials()) return;
+        if (!configLoaded) {
+            showStatus("Speichern ist gesperrt, solange die vorhandene config.json nicht erfolgreich geladen wurde. Bitte Seite neu laden.", false);
+            return;
+        }
+        const parsePrice = id => {
+            const n = Number(document.getElementById(id).value);
+            if (!Number.isFinite(n) || n < 0 || n > 100) throw new Error("Bitte gültige Preise zwischen 0,00 und 100,00 € eingeben.");
+            return Math.round(n * 100) / 100;
+        };
+        let updatedConfig;
+        try {
+            updatedConfig = {
+                geburtstag: {
+                    aktiv: document.getElementById("freeCoffeeActive").checked,
+                    spender: document.getElementById("freeCoffeeGiver").value.trim(),
+                    datum: document.getElementById("freeCoffeeDate").value || localDateString()
+                },
+                nachricht: {
+                    aktiv: document.getElementById("msgActive").checked,
+                    text: document.getElementById("msgText").value.trim(),
+                    typ: document.getElementById("msgColor").value === "red" ? "warnung" : "info"
+                },
+                preise: {
+                    "btn-kaffee": parsePrice("p_kaffee"),
+                    "btn-cappuccino": parsePrice("p_cappuccino"),
+                    "btn-wasser": parsePrice("p_wasser"),
+                    "btn-soft33": parsePrice("p_soft33"),
+                    "btn-soft5": parsePrice("p_soft5"),
+                    "btn-schokokl": parsePrice("p_schokokl"),
+                    "btn-schokogr": parsePrice("p_schokogr"),
+                    "btn-eis": parsePrice("p_eis"),
+                    "btn-fruehstueck": parsePrice("p_fruehstueck")
+                },
+                produkte: {
+                    anzeigen: {
+                        "btn-kaffee": document.getElementById("v_kaffee").checked,
+                        "btn-cappuccino": document.getElementById("v_cappuccino").checked,
+                        "btn-wasser": document.getElementById("v_wasser").checked,
+                        "btn-soft33": document.getElementById("v_soft33").checked,
+                        "btn-soft5": document.getElementById("v_soft5").checked,
+                        "btn-schokokl": document.getElementById("v_schokokl").checked,
+                        "btn-schokogr": document.getElementById("v_schokogr").checked,
+                        "btn-eis": document.getElementById("v_eis").checked,
+                        "btn-fruehstueck": document.getElementById("v_fruehstueck").checked
+                    }
+                },
+                paypal: { aktiv: document.getElementById("paypalActive").checked }
+            };
+        } catch (e) { showStatus(e.message, false); return; }
+
+        const saveButton = document.querySelector(".btn-save");
+        saveButton.disabled = true;
+        saveButton.textContent = "⏳ Speichere bei GitHub...";
+        showStatus("Speichere Änderungen bei GitHub...", true);
+        try {
+            // SHA frisch abrufen, damit ein zwischenzeitliches Update nicht überschrieben wird.
+            const getResponse = await fetchGetWithRetry(apiUrl() + "?cb=" + Date.now(), {
+                method: "GET",
+                headers: githubHeaders(),
+                cache: "no-store"
+            }, 3);
+            const current = await readApiJson(getResponse);
+            if (!current.sha || !current.content) throw new Error("GitHub hat keine vollständigen Dateidaten geliefert; config.json kann nicht sicher aktualisiert werden.");
+            currentSha = current.sha;
+
+            // Immer die zuletzt veröffentlichte Konfiguration als Basis nehmen, damit
+            // vorhandene Einstellungen und unbekannte Zusatzfelder erhalten bleiben.
+            const latestConfig = JSON.parse(decodeBase64Utf8(current.content));
+            const oldMessage = latestConfig.nachricht || latestConfig.message || {};
+            const oldPrevious = latestConfig.letzteNachricht || latestConfig.lastMessage || null;
+            const oldText = String(oldMessage.text || "").trim();
+            const newText = String(updatedConfig.nachricht.text || "").trim();
+            const newActive = Boolean(updatedConfig.nachricht.aktiv);
+            const oldType = oldMessage.typ || (oldMessage.color === "red" ? "warnung" : "info");
+
+            // Bei Veröffentlichung eines anderen aktiven Textes wird der bisherige
+            // Text immer zur letzten Nachricht. Das gilt auch dann, wenn der alte
+            // Text zwischenzeitlich ausgeschaltet war.
+            let previousMessage = oldPrevious;
+            if (newActive && newText && oldText && oldText !== newText) {
+                previousMessage = { text: oldText, typ: oldType };
+            }
+            if (previousMessage && typeof previousMessage === "string") {
+                previousMessage = { text: previousMessage, typ: "info" };
+            }
+            if (!previousMessage || !String(previousMessage.text || "").trim()) {
+                previousMessage = null;
+            } else {
+                previousMessage = {
+                    text: String(previousMessage.text).trim(),
+                    typ: previousMessage.typ || (previousMessage.color === "red" ? "warnung" : "info")
+                };
+            }
+            updatedConfig.letzteNachricht = previousMessage;
+            const latestBirthday = latestConfig.geburtstag || latestConfig.freeCoffee || {};
+            const selectedSpender = String(updatedConfig.geburtstag.spender || "").trim();
+            const selectedDate = updatedConfig.geburtstag.datum;
+            const oldSpender = String(latestBirthday.spender || latestBirthday.giver || "").trim();
+            const oldDate = String(latestBirthday.datum || "");
+            const wasActive = Boolean(latestBirthday.aktiv ?? latestBirthday.active);
+            const isActive = Boolean(updatedConfig.geburtstag.aktiv);
+            const newActionStarted = isActive && !wasActive;
+            const actionIdentityChanged = oldSpender !== selectedSpender || oldDate !== selectedDate;
+            // Eine stabile Aktions-ID ermöglicht die Einmal-Sperre je Benutzer und Aktion.
+            // Sie bleibt bei normalen Preis-/Nachrichtenänderungen erhalten.
+            const existingActionId = String(latestBirthday.aktionsId || latestBirthday.id || "").trim();
+            updatedConfig.geburtstag.aktionsId = (!existingActionId || actionIdentityChanged || newActionStarted)
+                ? `KAFFEE-${String(selectedDate || localDateString()).replace(/-/g, "")}-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
+                : existingActionId;
+            let retainedSettlement = latestBirthday.abrechnung || null;
+            // Beim Wechsel auf einen anderen Spender oder ein anderes Aktionsdatum
+            // wird die alte Abrechnung archiviert und nicht dem neuen Geburtstag zugeordnet.
+            const archivedSettlements = Array.isArray(latestBirthday.archiv) ? [...latestBirthday.archiv] : [];
+            if (retainedSettlement && (retainedSettlement.spender !== selectedSpender || retainedSettlement.datum !== selectedDate)) {
+                archivedSettlements.push(retainedSettlement);
+                retainedSettlement = null;
+            }
+            updatedConfig.geburtstag.abrechnung = retainedSettlement;
+            updatedConfig.geburtstag.archiv = archivedSettlements;
+            const finalConfig = { ...latestConfig, ...updatedConfig,
+                geburtstag: { ...latestBirthday, ...updatedConfig.geburtstag } };
+
+            const contentBase64 = btoa(Array.from(new TextEncoder().encode(JSON.stringify(finalConfig, null, 2)), b => String.fromCharCode(b)).join(""));
+            const response = await fetch(apiUrl(), {
+                method: "PUT",
+                headers: { ...githubHeaders(), "Content-Type": "application/json" },
+                body: JSON.stringify({ message: "Kaffeekasse: config.json aktualisiert", content: contentBase64, sha: currentSha })
+            });
+            const result = await readApiJson(response);
+            currentSha = result.content?.sha || currentSha;
+            loadedConfig = finalConfig;
+            showStatus("Gespeichert! Die aktuelle und die vorherige Nachricht bleiben in der Kassen-App sichtbar.", true);
+        } catch (e) {
+            showStatus("Speichern fehlgeschlagen: " + e.message, false);
+        } finally {
+            saveButton.disabled = false;
+            saveButton.textContent = "💾 Speichern & Live schalten";
+        }
+    }
+
+    function localDateString(date = new Date()) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+    }
+
+    function updateBirthdaySettlementPreview() {
+        const rawCount = document.getElementById("birthdayCoffeeCount")?.value ?? "";
+        const count = Number(rawCount);
+        const price = Number(document.getElementById("p_kaffee")?.value);
+        const box = document.getElementById("birthdaySettlementPreview");
+        if (!box) return;
+        if (rawCount === "") {
+            box.textContent = "Bitte nach 15 Uhr die Anzahl der Gratis-Kaffees aus den E-Mails eintragen.";
+            return;
+        }
+        if (!Number.isInteger(count) || count < 1 || !Number.isFinite(price) || price < 0) {
+            box.textContent = "Bitte eine Anzahl ab 1 und einen gültigen Kaffeepreis eintragen.";
+            return;
+        }
+        const total = Math.round(count * price * 100) / 100;
+        box.innerHTML = `<strong>${count} Kaffees × ${price.toFixed(2).replace(".", ",")} € = ${total.toFixed(2).replace(".", ",")} €</strong><br><span class="small-note">Dieser Betrag wird dem Spender in seiner Kassen-App zur Bestätigung angezeigt.</span>`;
+    }
+
+    async function publishBirthdaySettlement() {
+        if (!checkCredentials()) return;
+        if (!configLoaded) {
+            showStatus("Zuerst müssen die aktuellen Live-Daten erfolgreich geladen sein.", false);
+            return;
+        }
+        const spender = document.getElementById("freeCoffeeGiver").value.trim();
+        const eventDate = document.getElementById("freeCoffeeDate").value;
+        const countRaw = document.getElementById("birthdayCoffeeCount").value;
+        const count = Number(countRaw);
+        const unitPrice = Number(document.getElementById("p_kaffee").value);
+        if (!spender) { showStatus("Bitte zuerst den App-Anmeldenamen des Kaffeespenders eintragen.", false); return; }
+        if (!eventDate) { showStatus("Bitte das Datum der Kaffeeaktion eintragen.", false); return; }
+        if (countRaw === "" || !Number.isInteger(count) || count < 1 || count > 1000) {
+            showStatus("Bitte eine ganze Anzahl zwischen 1 und 1000 eintragen.", false); return;
+        }
+        if (!Number.isFinite(unitPrice) || unitPrice < 0 || unitPrice > 100) {
+            showStatus("Der normale Kaffeepreis ist ungültig.", false); return;
+        }
+        const endOfEvent = new Date(`${eventDate}T15:00:00`);
+        if (Date.now() < endOfEvent.getTime()) {
+            showStatus("Die Abrechnung kann erst nach 15:00 Uhr am Tag der Kaffeeaktion veröffentlicht werden.", false); return;
+        }
+
+        const publishButton = document.getElementById("publishBirthdayButton");
+        publishButton.disabled = true;
+        publishButton.textContent = "⏳ Veröffentliche Abrechnung...";
+        try {
+            const getResponse = await fetchGetWithRetry(apiUrl() + "?cb=" + Date.now(), {
+                method: "GET", headers: githubHeaders(), cache: "no-store"
+            }, 3);
+            const current = await readApiJson(getResponse);
+            if (!current.sha || !current.content) throw new Error("GitHub lieferte keine vollständige config.json.");
+            const latestConfig = JSON.parse(decodeBase64Utf8(current.content));
+            const birthday = latestConfig.geburtstag || latestConfig.freeCoffee || {};
+            const existing = birthday.abrechnung || null;
+            if (existing && existing.status === "offen" && existing.spender === spender && existing.datum === eventDate) {
+                throw new Error(`Für ${spender} liegt bereits eine offene Abrechnung (${existing.id}) vor. Sie wird nicht überschrieben, damit keine Doppelbelastung entsteht.`);
+            }
+
+            const total = Math.round(count * unitPrice * 100) / 100;
+            const settlementId = `KAFFEE-${eventDate.replace(/-/g, "")}-${Date.now()}`;
+            const settlement = {
+                id: settlementId,
+                spender,
+                datum: eventDate,
+                anzahl: count,
+                einzelpreis: Math.round(unitPrice * 100) / 100,
+                gesamt: total,
+                status: "offen",
+                erstellt: new Date().toISOString()
+            };
+            const archive = Array.isArray(birthday.archiv) ? [...birthday.archiv] : [];
+            if (existing && (existing.spender !== spender || existing.datum !== eventDate || existing.status !== "offen")) archive.push(existing);
+            const nextBirthday = {
+                ...birthday,
+                aktiv: false,
+                spender,
+                datum: eventDate,
+                abrechnung: settlement,
+                archiv: archive
+            };
+            const finalConfig = { ...latestConfig, geburtstag: nextBirthday };
+            const contentBase64 = btoa(Array.from(new TextEncoder().encode(JSON.stringify(finalConfig, null, 2)), b => String.fromCharCode(b)).join(""));
+            const response = await fetch(apiUrl(), {
+                method: "PUT",
+                headers: { ...githubHeaders(), "Content-Type": "application/json" },
+                body: JSON.stringify({ message: "Kaffeekasse: Kaffee-Spenden-Abrechnung veröffentlicht", content: contentBase64, sha: current.sha })
+            });
+            const result = await readApiJson(response);
+            currentSha = result.content?.sha || current.sha;
+            loadedConfig = finalConfig;
+            document.getElementById("freeCoffeeActive").checked = false;
+            showStatus(`Abrechnung ${settlementId} veröffentlicht: ${count} Kaffees = ${total.toFixed(2).replace(".", ",")} €. Der Spender sieht sie beim nächsten Neuladen.`, true);
+        } catch (e) {
+            showStatus("Abrechnung konnte nicht veröffentlicht werden: " + e.message, false);
+        } finally {
+            publishButton.disabled = false;
+            publishButton.textContent = "🧾 Abrechnung veröffentlichen";
+        }
+    }
+
+    // Erneute Zustellung nutzt dieselbe Abrechnungs-ID. Auf dem Spendergerät
+    // verhindert diese ID eine zweite Abbuchung, falls die Abrechnung dort bereits
+    // bestätigt wurde. Die Konfiguration wird trotzdem neu veröffentlicht, damit
+    // eine bislang nicht angekommene Abrechnung erneut abgefragt werden kann.
+    async function resendBirthdaySettlement() {
+        if (!checkCredentials()) return;
+        const button = document.getElementById("resendBirthdayButton");
+        button.disabled = true;
+        button.textContent = "⏳ Stelle vorhandene Abrechnung erneut zu...";
+        try {
+            const getResponse = await fetchGetWithRetry(apiUrl() + "?cb=" + Date.now(), {
+                method: "GET", headers: githubHeaders(), cache: "no-store"
+            }, 3);
+            const current = await readApiJson(getResponse);
+            if (!current.sha || !current.content) throw new Error("GitHub lieferte keine vollständige config.json.");
+            const latestConfig = JSON.parse(decodeBase64Utf8(current.content));
+            const birthday = latestConfig.geburtstag || latestConfig.freeCoffee || {};
+            const existing = birthday.abrechnung || null;
+            if (!existing || existing.status !== "offen") {
+                throw new Error("Es gibt keine offene Abrechnung, die erneut zugestellt werden kann.");
+            }
+            const count = Number(existing.anzahl) || 0;
+            const total = Number(existing.gesamt);
+            const safeTotal = Number.isFinite(total) ? total : count * (Number(existing.einzelpreis) || 0);
+            const id = String(existing.id || "").trim();
+            if (!id) throw new Error("Die vorhandene Abrechnung besitzt keine Abrechnungs-ID. Bitte nicht neu veröffentlichen, bevor das geprüft wurde.");
+            const spender = String(existing.spender || birthday.spender || "").trim();
+            const dateLabel = String(existing.datum || "");
+            const approved = confirm(
+                `Vorhandene Abrechnung erneut zustellen?\n\nSpender: ${spender}\nDatum: ${dateLabel}\nKaffees: ${count}\nBetrag: ${safeTotal.toFixed(2).replace(".", ",")} €\nAbrechnungs-ID: ${id}\n\nDie Abrechnungs-ID bleibt unverändert. Auf demselben Gerät wird dadurch nicht erneut abgebucht.`
+            );
+            if (!approved) return;
+
+            const updatedSettlement = {
+                ...existing,
+                erneutVeröffentlicht: new Date().toISOString(),
+                erneutVeröffentlichtAnzahl: (Number(existing.erneutVeröffentlichtAnzahl) || 0) + 1
+            };
+            const finalConfig = {
+                ...latestConfig,
+                geburtstag: { ...birthday, abrechnung: updatedSettlement }
+            };
+            const contentBase64 = btoa(Array.from(new TextEncoder().encode(JSON.stringify(finalConfig, null, 2)), b => String.fromCharCode(b)).join(""));
+            const putResponse = await fetch(apiUrl(), {
+                method: "PUT",
+                headers: { ...githubHeaders(), "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: `Kaffeekasse: offene Abrechnung ${id} erneut zugestellt`,
+                    content: contentBase64,
+                    sha: current.sha
+                })
+            });
+            const result = await readApiJson(putResponse);
+            currentSha = result.content?.sha || current.sha;
+            loadedConfig = finalConfig;
+            showStatus(`Die offene Abrechnung für ${spender} wurde mit derselben ID (${id}) erneut veröffentlicht. Die Kassen-App fragt sie spätestens beim nächsten Aktualisieren ab.`, true);
+        } catch (error) {
+            showStatus("Erneute Zustellung fehlgeschlagen: " + error.message, false);
+        } finally {
+            button.disabled = false;
+            button.textContent = "↻ Vorhandene Abrechnung erneut zustellen";
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        ["birthdayCoffeeCount", "p_kaffee"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener("input", updateBirthdaySettlementPreview);
+        });
+        const birthdayDateInput = document.getElementById("freeCoffeeDate");
+        if (birthdayDateInput) birthdayDateInput.addEventListener("change", () => {
+            const loadedBirthday = loadedConfig.geburtstag || loadedConfig.freeCoffee || {};
+            if (birthdayDateInput.value !== (loadedBirthday.datum || "")) {
+                document.getElementById("birthdayCoffeeCount").value = "";
+                updateBirthdaySettlementPreview();
+            }
+        });
+    });
+
+    function changeCredentials() {
+        const token = prompt("Neuen GitHub Fine-grained Personal Access Token eingeben:");
+        if (!token || !token.trim()) return;
+        githubToken = token.trim();
+        try {
+            localStorage.setItem(TOKEN_STORAGE_KEY, githubToken);
+            location.reload();
+        } catch (_) {
+            githubToken = "";
+            showStatus("Der neue Token konnte nicht gespeichert werden. Bitte Browser-Speicher prüfen.", false);
+        }
+    }
+
+    function clearCredentials() {
+        githubToken = "";
+        try { localStorage.removeItem(TOKEN_STORAGE_KEY); } catch (_) {}
+        location.reload();
+    }
+
+    function showStatus(msg, isSuccess) {
+        const box = document.getElementById("statusBox");
+        box.textContent = msg;
+        box.style.display = "block";
+        box.className = "status " + (isSuccess ? "status-success" : "status-error");
+    }
+
+    // Erst nach dem vollständigen Seitenaufbau laden. Das vermeidet einen
+    // zu frühen API-Aufruf während GitHub Pages/Browser noch initialisieren.
+    window.addEventListener("load", () => {
+        setTimeout(() => loadCurrentConfig(), 800);
+    });
+</script>
+</body>
+</html>
