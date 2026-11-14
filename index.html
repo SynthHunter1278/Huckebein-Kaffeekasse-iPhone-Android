@@ -448,12 +448,36 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
   .action-copy strong { font-size:9px; }
 }
 
-/* Guthabenanzeige: Statuszeilen entfallen, digitaler Betrag wird deutlich betont. */
+/* Guthaben klar und groß unterhalb des Tachometers anzeigen. */
 .balance-status-row,
 .saldo-subtext { display:none !important; }
-.saldo-amount { font-size:39px; letter-spacing:0; }
-@media (max-width:340px) {
-  .saldo-amount { font-size:35px; }
+.balance-readout {
+  width:min(94%,560px); margin:5px auto 9px; padding:12px 16px 14px;
+  border:2px solid #4d7893; border-radius:16px;
+  background:linear-gradient(145deg,rgba(10,31,48,.98),rgba(20,57,79,.98));
+  box-shadow:0 8px 22px rgba(0,0,0,.30),inset 0 0 0 1px rgba(190,225,243,.06);
+  text-align:center;
+}
+.balance-readout-label {
+  margin:0 0 3px; color:#d9eaf4; font-size:clamp(16px,3.8vw,21px);
+  line-height:1.15; font-weight:900; letter-spacing:.24em;
+  text-shadow:0 1px 8px rgba(130,190,220,.22);
+}
+.balance-readout-value {
+  display:block; width:100%; color:#65e2bd;
+  font-size:clamp(42px,11vw,64px); line-height:1.06;
+  font-weight:1000; font-variant-numeric:tabular-nums;
+  letter-spacing:-.035em; white-space:nowrap;
+  text-shadow:0 0 16px rgba(65,226,189,.22);
+}
+.saldo-negative .balance-readout { border-color:#d34a54; }
+.saldo-negative .balance-readout-value {
+  color:#ff737d; text-shadow:0 0 16px rgba(255,85,100,.22);
+}
+@media (max-width:380px) {
+  .balance-readout { width:96%; padding:10px 9px 12px; }
+  .balance-readout-label { font-size:16px; }
+  .balance-readout-value { font-size:clamp(38px,11vw,48px); }
 }
 
 </style>
@@ -552,10 +576,6 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
                 <polygon points="130,48 124,67 136,67"/>
               </g>
               <circle class="gauge-hub" cx="130" cy="127" r="8"/>
-              <!-- Digitalanzeige bewusst tiefer als die Zeigernabe. -->
-              <rect class="gauge-digital" x="38" y="144" width="184" height="50" rx="8"/>
-              <text id="my-saldo" class="saldo-amount" x="130" y="169">0,00 €</text>
-              <text x="130" y="210" fill="#b8d0df" font-size="9" font-weight="900" text-anchor="middle" letter-spacing="1.6">GUTHABEN</text>
             </svg>
           </div>
 
@@ -591,6 +611,10 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
             </svg>
             <strong id="instrumentTime" class="clock-digital">00:00</strong>
           </aside>
+        </div>
+        <div class="balance-readout" aria-live="polite" aria-label="Aktuelles Guthaben">
+          <div class="balance-readout-label">GUTHABEN</div>
+          <div id="my-saldo" class="balance-readout-value">0,00 €</div>
         </div>
         <div class="balance-status-row" aria-live="polite">
           <span id="balanceNegativeFlag" class="balance-flag negative-flag">NEGATIV</span>
@@ -1319,16 +1343,24 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         const saldoBox = document.querySelector('.saldo-box');
         const saldoText = meinSaldo.toFixed(2).replace('.', ',') + " €";
         saldoElement.textContent = saldoText;
-        // Große Guthabenwerte bleiben innerhalb des verbreiterten Digitalfensters lesbar.
-        saldoElement.style.fontSize = "39px";
+        // Den Betrag im breiten Guthabenfeld unter dem Tachometer möglichst groß halten.
+        // Bei langen/negativen Beträgen wird die Schrift automatisch an die Feldbreite angepasst.
+        saldoElement.style.fontSize = "";
         try {
-            const measuredWidth = saldoElement.getComputedTextLength();
-            const availableWidth = 168;
-            if (measuredWidth > availableWidth) {
-                const fittedSize = Math.max(27, 39 * availableWidth / measuredWidth);
-                saldoElement.style.fontSize = `${fittedSize.toFixed(1)}px`;
+            const computed = window.getComputedStyle(saldoElement);
+            const baseSize = parseFloat(computed.fontSize) || 54;
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
+            if (context) {
+                context.font = `${computed.fontWeight} ${baseSize}px ${computed.fontFamily}`;
+                const measuredWidth = context.measureText(saldoText).width;
+                const availableWidth = Math.max(120, saldoElement.parentElement.clientWidth - 42);
+                if (measuredWidth > availableWidth) {
+                    const fittedSize = Math.max(30, baseSize * availableWidth / measuredWidth);
+                    saldoElement.style.fontSize = `${fittedSize.toFixed(1)}px`;
+                }
             }
-        } catch (_) { /* Fallback bleibt die große CSS-Schrift. */ }
+        } catch (_) { /* Fallback bleibt die responsive CSS-Schrift. */ }
         updateBalanceGauge();
         if (saldoBox) saldoBox.classList.toggle('saldo-negative', meinSaldo < 0);
         const negativeFlag = document.getElementById("balanceNegativeFlag");
