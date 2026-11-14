@@ -5,46 +5,207 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kaffeekasse Admin</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 15px; background-color: #1e293b; color: #f8fafc; }
-        .container { max-width: 500px; margin: 0 auto; background: #334155; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-        h1 { text-align: center; color: #38bdf8; margin-bottom: 20px; font-size: 22px; }
-        h2 { font-size: 14px; text-transform: uppercase; color: #94a3b8; border-bottom: 1px solid #475569; padding-bottom: 5px; margin-top: 20px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #cbd5e1; }
-        input[type="text"], input[type="number"], input[type="date"], select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: white; font-size: 15px; box-sizing: border-box; }
-        .btn-publish { width:100%; padding:13px; border:0; border-radius:8px; background:#16a34a; color:#fff; font-size:15px; font-weight:bold; cursor:pointer; margin:8px 0 14px; }
+        :root { color-scheme: dark; --bg:#0f172a; --panel:#1e293b; --panel-2:#263449; --line:#3b4b63; --text:#f8fafc; --muted:#a9b8cc; --accent:#38bdf8; --accent-dark:#075985; }
+        * { box-sizing:border-box; }
+        body { font-family:Arial,sans-serif; margin:0; padding:22px; background:radial-gradient(ellipse at top left,#1e3a5f 0,#0f172a 48%,#0b1220 100%); color:var(--text); min-height:100vh; }
+        .app-shell { width:min(1220px,100%); margin:0 auto; display:grid; grid-template-columns:250px minmax(0,1fr); gap:20px; align-items:start; }
+        .sidebar { position:sticky; top:22px; background:rgba(30,41,59,.96); border:1px solid var(--line); border-radius:18px; padding:20px 14px; box-shadow:0 12px 34px rgba(0,0,0,.24); }
+        .brand { padding:4px 10px 18px; border-bottom:1px solid var(--line); margin-bottom:17px; }
+        .brand-mark { font-size:25px; margin-bottom:7px; }
+        .brand-name { color:var(--accent); font-size:19px; font-weight:800; letter-spacing:.5px; }
+        .brand-sub { color:var(--muted); font-size:10px; letter-spacing:1.8px; margin-top:4px; }
+        .nav-label { color:#74869f; font-size:10px; font-weight:800; letter-spacing:1.5px; padding:0 10px 9px; }
+        .admin-nav { display:grid; gap:7px; }
+        .nav-button { width:100%; display:flex; align-items:center; gap:11px; text-align:left; border:1px solid transparent; border-radius:11px; padding:11px 10px; background:transparent; color:#dbe7f5; cursor:pointer; transition:background .18s,border-color .18s,transform .18s; }
+        .nav-button:hover { background:#33465f; }
+        .nav-button.active { background:linear-gradient(110deg,#0c4a6e,#164e63); border-color:#0ea5e9; color:#fff; box-shadow:inset 3px 0 #38bdf8; }
+        .nav-icon { width:32px; height:32px; flex:0 0 32px; display:grid; place-items:center; border-radius:9px; background:rgba(148,163,184,.13); font-size:18px; }
+        .nav-button.active .nav-icon { background:rgba(56,189,248,.2); }
+        .nav-copy { display:grid; gap:3px; }
+        .nav-copy strong { font-size:13px; }
+        .nav-copy small { color:#9fb0c5; font-size:10px; line-height:1.25; }
+        .sidebar-foot { border-top:1px solid var(--line); margin:18px 8px 0; padding-top:13px; color:#8193aa; font-size:10px; line-height:1.5; }
+        .main-area { min-width:0; background:rgba(30,41,59,.94); border:1px solid var(--line); border-radius:18px; padding:24px; box-shadow:0 12px 34px rgba(0,0,0,.24); }
+        .page-top { display:flex; justify-content:space-between; align-items:center; gap:16px; padding-bottom:17px; border-bottom:1px solid var(--line); margin-bottom:16px; }
+        .eyebrow { color:var(--accent); font-size:10px; font-weight:800; letter-spacing:1.7px; margin:0 0 6px; }
+        h1 { margin:0; color:#fff; font-size:25px; }
+        .page-description { color:var(--muted); font-size:13px; margin:6px 0 0; line-height:1.45; }
+        .connection-pill { flex:0 0 auto; border:1px solid #36536b; border-radius:30px; padding:8px 11px; color:#b9d8e8; font-size:11px; white-space:nowrap; background:#142c40; }
+        .connection-pill span { color:#4ade80; margin-right:5px; }
+        .status { padding:12px 14px; border-radius:9px; text-align:left; font-weight:bold; margin:0 0 16px; display:none; font-size:13px; line-height:1.45; }
+        .status-success { background:#14532d; color:#dcfce7; border:1px solid #15803d; }
+        .status-error { background:#7f1d1d; color:#fee2e2; border:1px solid #dc2626; }
+        .page-panel[hidden] { display:none !important; }
+        .page-panel { display:grid; gap:15px; }
+        .content-card { background:linear-gradient(145deg,#26364c,#223047); border:1px solid #40516a; border-radius:14px; padding:18px; min-width:0; }
+        .content-card h2 { font-size:13px; text-transform:uppercase; color:#a9c5dc; letter-spacing:.6px; border-bottom:1px solid #40516a; padding-bottom:9px; margin:0 0 15px; }
+        .form-group { margin-bottom:14px; }
+        label { display:block; font-size:12px; font-weight:bold; margin-bottom:6px; color:#d3deeb; }
+        input[type="text"],input[type="number"],input[type="date"],select { width:100%; padding:11px 12px; border-radius:8px; border:1px solid #52647d; background:#111e30; color:white; font-size:15px; outline:none; }
+        input:focus,select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(56,189,248,.13); }
+        .btn-publish { width:100%; padding:13px; border:0; border-radius:9px; background:#16a34a; color:#fff; font-size:14px; font-weight:bold; cursor:pointer; margin:8px 0 12px; }
+        .btn-publish:hover { background:#15803d; }
         .btn-publish:disabled { opacity:.6; cursor:wait; }
-        .btn-resend { width:100%; padding:12px; border:1px solid #60a5fa; border-radius:8px; background:#1d4ed8; color:#fff; font-size:14px; font-weight:bold; cursor:pointer; margin:0 0 12px; }
+        .btn-resend { width:100%; padding:12px; border:1px solid #60a5fa; border-radius:9px; background:#1d4ed8; color:#fff; font-size:13px; font-weight:bold; cursor:pointer; margin:0 0 12px; }
         .btn-resend:disabled { opacity:.6; cursor:wait; }
-        .small-note { font-size:12px; color:#cbd5e1; line-height:1.45; }
-        .settlement-preview { background:#1e293b; border:1px solid #475569; border-radius:8px; padding:12px; margin:8px 0; color:#e2e8f0; }
-        .flex-group { display: flex; align-items: center; gap: 10px; }
-        .switch { position: relative; display: inline-block; width: 44px; height: 24px; min-width: 44px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; transition: .3s; border-radius: 24px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .3s; border-radius: 50%; }
-        input:checked + .slider { background-color: #38bdf8; }
-        input:checked + .slider:before { transform: translateX(20px); }
-        .btn-save { width: 100%; padding: 15px; background: #0284c7; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn-save:hover { background: #0369a1; }
-        .btn-save:disabled { opacity: .65; cursor: wait; }
-        .status { padding: 12px; border-radius: 6px; text-align: center; font-weight: bold; margin-top: 15px; display: none; font-size: 14px; }
-        .status-success { background: #16a34a; color: white; }
-        .status-error { background: #dc2626; color: white; }
-        .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .availability-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 12px; }
-        .availability-item { display: flex; align-items: center; gap: 8px; min-height: 30px; color: #cbd5e1; font-size: 13px; font-weight: bold; }
-        .logout-link { display: block; text-align: center; margin-top: 20px; font-size: 12px; color: #94a3b8; cursor: pointer; text-decoration: underline; }
+        .small-note { font-size:11px; color:#b9c8d9; line-height:1.5; margin:8px 0 0; }
+        .settlement-preview { background:#142237; border:1px solid #465a73; border-radius:9px; padding:12px; margin:8px 0; color:#e2e8f0; font-size:13px; line-height:1.5; }
+        .flex-group { display:flex; align-items:center; gap:10px; }
+        .flex-group > span { color:#e2e8f0; font-size:13px; line-height:1.4; }
+        .switch { position:relative; display:inline-block; width:44px; height:24px; min-width:44px; margin:0; }
+        .switch input { opacity:0; width:0; height:0; }
+        .slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#52647d; transition:.3s; border-radius:24px; }
+        .slider:before { position:absolute; content:""; height:16px; width:16px; left:4px; bottom:4px; background-color:white; transition:.3s; border-radius:50%; }
+        .switch input:checked + .slider { background-color:#0284c7; }
+        .switch input:checked + .slider:before { transform:translateX(20px); }
+        .price-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px 14px; }
+        .price-grid .form-group { margin-bottom:4px; }
+        .availability-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px 14px; }
+        .availability-item { display:flex; align-items:center; gap:8px; min-height:34px; color:#d3deeb; font-size:12px; font-weight:bold; }
+        .availability-item label { flex:0 0 44px; margin:0; }
+        .overview-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+        .overview-tile { border:1px solid #40516a; border-radius:11px; background:#1c2b40; padding:13px; }
+        .overview-tile strong { display:block; font-size:13px; color:#eaf6ff; margin-bottom:4px; }
+        .overview-tile span { color:#aebed0; font-size:11px; line-height:1.4; }
+        .logout-link { display:block; text-align:left; margin-top:13px; font-size:12px; color:#7dd3fc; cursor:pointer; text-decoration:underline; }
+        .global-actions { position:sticky; bottom:0; z-index:5; margin:18px -24px -24px; padding:14px 24px 18px; border-radius:0 0 18px 18px; background:rgba(18,31,49,.97); border-top:1px solid #40516a; backdrop-filter:blur(12px); }
+        .btn-save { width:100%; max-width:520px; display:block; margin:0 auto; padding:14px 18px; background:linear-gradient(100deg,#0284c7,#0369a1); color:white; border:1px solid #38bdf8; border-radius:10px; font-size:15px; font-weight:bold; cursor:pointer; box-shadow:0 5px 15px rgba(2,132,199,.2); }
+        .btn-save:hover { background:#0369a1; }
+        .btn-save:disabled { opacity:.65; cursor:wait; }
+        .overview-lead { color:#e2e8f0; font-size:14px; line-height:1.55; margin:0 0 14px; }
+        @media (max-width:900px) {
+            body { padding:12px; }
+            .app-shell { grid-template-columns:1fr; gap:12px; }
+            .sidebar { position:relative; top:auto; padding:13px; }
+            .brand { padding:2px 5px 11px; margin-bottom:11px; }
+            .brand-mark { display:none; }
+            .brand-name { font-size:17px; }
+            .admin-nav { grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; }
+            .nav-button { display:flex; flex-direction:column; justify-content:center; text-align:center; gap:5px; padding:9px 4px; min-height:72px; }
+            .nav-icon { width:27px; height:27px; flex-basis:27px; font-size:15px; }
+            .nav-copy strong { font-size:10px; }
+            .nav-copy small,.nav-label,.sidebar-foot { display:none; }
+            .main-area { padding:18px; }
+            .global-actions { margin:16px -18px -18px; padding:12px 18px 15px; }
+        }
+        @media (max-width:560px) {
+            body { padding:8px; }
+            .admin-nav { grid-template-columns:repeat(3,minmax(0,1fr)); }
+            .nav-button { min-height:64px; }
+            .main-area { padding:14px; border-radius:14px; }
+            .page-top { align-items:flex-start; }
+            h1 { font-size:21px; }
+            .connection-pill { font-size:0; padding:8px 10px; }
+            .connection-pill span { font-size:12px; margin:0; }
+            .content-card { padding:14px; }
+            .price-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 10px; }
+            .availability-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+            .availability-item { font-size:11px; }
+            .overview-grid { grid-template-columns:1fr; }
+            .global-actions { margin:14px -14px -14px; padding:11px 14px 13px; }
+        }
     </style>
 </head>
 <body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark">☕</div>
+            <div class="brand-name">HANS HUCKEBEIN</div>
+            <div class="brand-sub">KAFFEEKASSE · ADMIN</div>
+        </div>
+        <div class="nav-label">VERWALTUNG</div>
+        <nav class="admin-nav" aria-label="Admin-Bereiche">
+            <button type="button" class="nav-button active" data-admin-page="overview" onclick="showAdminPage('overview')"><span class="nav-icon">⌂</span><span class="nav-copy"><strong>Übersicht</strong><small>Status & Zugang</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="sortiment" onclick="showAdminPage('sortiment')"><span class="nav-icon">☕</span><span class="nav-copy"><strong>Sortiment</strong><small>Produkte & Preise</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="aufladen" onclick="showAdminPage('aufladen')"><span class="nav-icon">€</span><span class="nav-copy"><strong>Aufladen</strong><small>PayPal-Funktion</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="aktionen" onclick="showAdminPage('aktionen')"><span class="nav-icon">★</span><span class="nav-copy"><strong>Aktionen</strong><small>Gratiskaffee</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="abrechnung" onclick="showAdminPage('abrechnung')"><span class="nav-icon">▤</span><span class="nav-copy"><strong>Abrechnung</strong><small>Abrechnung & Nachrichten</small></span></button>
+        </nav>
+        <div class="sidebar-foot">Live-Verwaltung über GitHub<br>Änderungen werden gemeinsam veröffentlicht.</div>
+    </aside>
 
-<div class="container">
-    <h1>🛠️ Kaffeekasse Admin-Panel</h1>
-    <div id="statusBox" class="status"></div>
+    <main class="main-area">
+        <header class="page-top">
+            <div>
+                <p class="eyebrow">HANS HUCKEBEIN · ADMINISTRATION</p>
+                <h1 id="pageTitle">Übersicht</h1>
+                <p class="page-description" id="pageDescription">Status, Zugang und zentrale Speicherfunktion deiner Kaffeekasse.</p>
+            </div>
+            <div class="connection-pill"><span>●</span> Live-Konfiguration</div>
+        </header>
+        <div id="statusBox" class="status" role="status" aria-live="polite"></div>
 
-    <div id="adminForm">
-        <h2>☕ Freikaffee-Aktion</h2>
+        <div id="adminForm">
+            <section class="page-panel" data-admin-panel="overview">
+                <div class="content-card">
+                    <h2>Willkommen im Admin-Bereich</h2>
+                    <p class="overview-lead">Alle Einstellungen sind jetzt in getrennten Bereichen organisiert. Wähle links oder oben den gewünschten Bereich. Deine Änderungen bleiben beim Wechsel zwischen den Bereichen erhalten.</p>
+                    <div class="overview-grid">
+                        <div class="overview-tile"><strong>☕ Sortiment</strong><span>Verkaufsprodukte ein- oder ausblenden und Preise bearbeiten.</span></div>
+                        <div class="overview-tile"><strong>💳 Aufladen</strong><span>Die PayPal-Aufladung für die Kassen-App freigeben oder sperren.</span></div>
+                        <div class="overview-tile"><strong>🎁 Aktionen</strong><span>Eine Gratis-Kaffeeaktion mit Spender und Aktionsdatum einrichten.</span></div>
+                        <div class="overview-tile"><strong>🧾 Abrechnung</strong><span>Gezählte Kaffees abrechnen, erneut zustellen und Nutzer informieren.</span></div>
+                    </div>
+                    <p class="small-note">Wichtig: Der Button „Speichern & Live schalten“ am unteren Rand veröffentlicht die Änderungen aus allen Bereichen gemeinsam in config.json. Du musst dafür nicht zur Übersicht zurückkehren.</p>
+                </div>
+                <div class="content-card">
+                    <h2>GitHub-Zugang</h2>
+                    <span class="logout-link" onclick="changeCredentials()">GitHub-Token ändern</span>
+        <span class="logout-link" onclick="clearCredentials()">Gespeicherten Token löschen / abmelden</span>
+        <p style="font-size:12px;color:#cbd5e1;line-height:1.45;text-align:center;">Der GitHub-Token wird auf diesem Gerät in diesem Browser gespeichert. Auf PC, Android und iPhone muss er jeweils einmal eingegeben werden. Für das Speichern wird ein Fine-grained Token mit Contents: Read and write benötigt.</p>
+                </div>
+            </section>
+
+            <section class="page-panel" data-admin-panel="sortiment" hidden>
+                <div class="content-card">
+                    <h2>☕ Live-Preise ändern (€)</h2>
+        <div class="price-grid">
+            <div class="form-group"><label>Kaffee:</label><input type="number" step="0.01" id="p_kaffee"></div>
+            <div class="form-group"><label>Cappuccino:</label><input type="number" step="0.01" id="p_cappuccino"></div>
+            <div class="form-group"><label>Wasser 0.7L:</label><input type="number" step="0.01" id="p_wasser"></div>
+            <div class="form-group"><label>Softdrink 0.33L:</label><input type="number" step="0.01" id="p_soft33"></div>
+            <div class="form-group"><label>Softdrink 0.5L:</label><input type="number" step="0.01" id="p_soft5"></div>
+            <div class="form-group"><label>Schokoriegel kl.:</label><input type="number" step="0.01" id="p_schokokl"></div>
+            <div class="form-group"><label>Schokoriegel gr.:</label><input type="number" step="0.01" id="p_schokogr"></div>
+            <div class="form-group"><label>Eiscreme:</label><input type="number" step="0.01" id="p_eis"></div>
+            <div class="form-group"><label>Frühstück:</label><input type="number" step="0.01" id="p_fruehstueck"></div>
+        </div>
+                </div>
+                <div class="content-card">
+                    <h2>📦 Produktverfügbarkeit</h2>
+        <p style="font-size:12px;color:#cbd5e1;line-height:1.4;margin-top:-5px;">Nicht verfügbare Produkte abwählen. Sie werden anschließend in der Kassen-App ausgeblendet.</p>
+        <div class="availability-grid">
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_kaffee" checked><span class="slider"></span></label><span>Kaffee anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_cappuccino" checked><span class="slider"></span></label><span>Cappuccino anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_wasser" checked><span class="slider"></span></label><span>Wasser anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_soft33" checked><span class="slider"></span></label><span>Softdrink 0,33L anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_soft5" checked><span class="slider"></span></label><span>Softdrink 0,5L anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_schokokl" checked><span class="slider"></span></label><span>Schokoriegel klein anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_schokogr" checked><span class="slider"></span></label><span>Schokoriegel groß anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_eis" checked><span class="slider"></span></label><span>Eiscreme anzeigen</span></div>
+            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_fruehstueck" checked><span class="slider"></span></label><span>Frühstück anzeigen</span></div>
+        </div>
+                </div>
+            </section>
+
+            <section class="page-panel" data-admin-panel="aufladen" hidden>
+                <div class="content-card">
+                    <h2>💳 PayPal-Aufladung</h2>
+        <div class="form-group flex-group">
+            <label class="switch">
+                <input type="checkbox" id="paypalActive" checked>
+                <span class="slider"></span>
+            </label>
+            <span>PayPal-Aufladung in der Kassen-App erlauben</span>
+        </div>
+        <p style="font-size:12px;color:#cbd5e1;line-height:1.4;margin-top:-8px;">Bei ausgeschalteter Option wird der PayPal-Button in der Kassen-App ausgeblendet und eine neue PayPal-Aufladung verhindert. Die Bar-Aufladung bleibt verfügbar.</p>
+                </div>
+            </section>
+
+            <section class="page-panel" data-admin-panel="aktionen" hidden>
+                <div class="content-card">
+                    <h2>☕ Freikaffee-Aktion</h2>
         <div class="form-group flex-group">
             <label class="switch">
                 <input type="checkbox" id="freeCoffeeActive">
@@ -62,8 +223,12 @@
             <input type="date" id="freeCoffeeDate">
         </div>
         <p class="small-note">Am eingetragenen Tag kann jeder Teilnehmer über seine Kassen-App einmalig einen Becher Automatenkaffee von 06:00 bis 15:00 Uhr kostenlos abrufen. Weitere Kaffees und andere Produkte bleiben kostenpflichtig.</p>
+                </div>
+            </section>
 
-        <h2>🧾 Kaffee-Spenden-Abrechnung</h2>
+            <section class="page-panel" data-admin-panel="abrechnung" hidden>
+                <div class="content-card">
+                    <h2>🧾 Kaffee-Spenden-Abrechnung</h2>
         <div class="form-group">
             <label for="birthdayCoffeeCount">Gezählte Gratis-Kaffees (aus den E-Mails):</label>
             <input type="number" id="birthdayCoffeeCount" min="1" max="1000" step="1" placeholder="z. B. 24">
@@ -73,8 +238,9 @@
         <button type="button" class="btn-resend" id="resendBirthdayButton" onclick="resendBirthdaySettlement()">↻ Vorhandene Abrechnung erneut zustellen</button>
         <p class="small-note">„Erneut zustellen“ veröffentlicht dieselbe offene Abrechnung mit derselben Abrechnungs-ID erneut. Dadurch wird sie auf dem Spendergerät erneut abgefragt, ohne auf demselben Gerät ein zweites Mal abzubuchen.</p>
         <p class="small-note">Die Admin-App berechnet den Betrag aus Anzahl × normalem Kaffeepreis und veröffentlicht ihn in config.json. Der Spender bestätigt die Abbuchung in seiner eigenen Kassen-App.</p>
-
-        <h2>📢 Nachricht an alle</h2>
+                </div>
+                <div class="content-card">
+                    <h2>📢 Nachricht an alle</h2>
         <div class="form-group flex-group">
             <label class="switch">
                 <input type="checkbox" id="msgActive">
@@ -93,51 +259,39 @@
                 <option value="red">Warnung-Rot</option>
             </select>
         </div>
+                </div>
+            </section>
 
-        <h2>☕ Live-Preise ändern (€)</h2>
-        <div class="price-grid">
-            <div class="form-group"><label>Kaffee:</label><input type="number" step="0.01" id="p_kaffee"></div>
-            <div class="form-group"><label>Cappuccino:</label><input type="number" step="0.01" id="p_cappuccino"></div>
-            <div class="form-group"><label>Wasser 0.7L:</label><input type="number" step="0.01" id="p_wasser"></div>
-            <div class="form-group"><label>Softdrink 0.33L:</label><input type="number" step="0.01" id="p_soft33"></div>
-            <div class="form-group"><label>Softdrink 0.5L:</label><input type="number" step="0.01" id="p_soft5"></div>
-            <div class="form-group"><label>Schokoriegel kl.:</label><input type="number" step="0.01" id="p_schokokl"></div>
-            <div class="form-group"><label>Schokoriegel gr.:</label><input type="number" step="0.01" id="p_schokogr"></div>
-            <div class="form-group"><label>Eiscreme:</label><input type="number" step="0.01" id="p_eis"></div>
-            <div class="form-group"><label>Frühstück:</label><input type="number" step="0.01" id="p_fruehstueck"></div>
+            <div class="global-actions">
+                <button class="btn-save" onclick="saveAndPushConfig()" disabled>⏳ Live-Daten werden geladen...</button>
+            </div>
         </div>
-
-        <h2>📦 Produktverfügbarkeit</h2>
-        <p style="font-size:12px;color:#cbd5e1;line-height:1.4;margin-top:-5px;">Nicht verfügbare Produkte abwählen. Sie werden anschließend in der Kassen-App ausgeblendet.</p>
-        <div class="availability-grid">
-            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_kaffee" checked><span class="slider"></span></label><span>Kaffee anzeigen</span></div>
-            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_cappuccino" checked><span class="slider"></span></label><span>Cappuccino anzeigen</span></div>
-            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_wasser" checked><span class="slider"></span></label><span>Wasser anzeigen</span></div>
-            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_soft33" checked><span class="slider"></span></label><span>Softdrink 0,33L anzeigen</span></div>
-            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_soft5" checked><span class="slider"></span></label><span>Softdrink 0,5L anzeigen</span></div>
-            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_schokokl" checked><span class="slider"></span></label><span>Schokoriegel klein anzeigen</span></div>
-            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_schokogr" checked><span class="slider"></span></label><span>Schokoriegel groß anzeigen</span></div>
-            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_eis" checked><span class="slider"></span></label><span>Eiscreme anzeigen</span></div>
-            <div class="availability-item"><label class="switch"><input type="checkbox" id="v_fruehstueck" checked><span class="slider"></span></label><span>Frühstück anzeigen</span></div>
-        </div>
-
-        <h2>💳 PayPal-Aufladung</h2>
-        <div class="form-group flex-group">
-            <label class="switch">
-                <input type="checkbox" id="paypalActive" checked>
-                <span class="slider"></span>
-            </label>
-            <span>PayPal-Aufladung in der Kassen-App erlauben</span>
-        </div>
-        <p style="font-size:12px;color:#cbd5e1;line-height:1.4;margin-top:-8px;">Bei ausgeschalteter Option wird der PayPal-Button in der Kassen-App ausgeblendet und eine neue PayPal-Aufladung verhindert. Die Bar-Aufladung bleibt verfügbar.</p>
-
-        <button class="btn-save" onclick="saveAndPushConfig()" disabled>⏳ Live-Daten werden geladen...</button>
-        <span class="logout-link" onclick="changeCredentials()">GitHub-Token ändern</span>
-        <span class="logout-link" onclick="clearCredentials()">Gespeicherten Token löschen / abmelden</span>
-        <p style="font-size:12px;color:#cbd5e1;line-height:1.45;text-align:center;">Der GitHub-Token wird auf diesem Gerät in diesem Browser gespeichert. Auf PC, Android und iPhone muss er jeweils einmal eingegeben werden. Für das Speichern wird ein Fine-grained Token mit Contents: Read and write benötigt.</p>
-    </div>
+    </main>
 </div>
 <script>
+
+    // Navigation: Es wird immer nur ein Admin-Bereich angezeigt.
+    const adminPageInfo = {
+        overview: { title: "Übersicht", description: "Status, Zugang und zentrale Speicherfunktion deiner Kaffeekasse." },
+        sortiment: { title: "Sortiment", description: "Produkte sichtbar schalten und Verkaufspreise bearbeiten." },
+        aufladen: { title: "Aufladen", description: "Die PayPal-Aufladung in der Kassen-App verwalten." },
+        aktionen: { title: "Aktionen", description: "Die Gratis-Kaffeeaktion einrichten und steuern." },
+        abrechnung: { title: "Abrechnung & Kommunikation", description: "Kaffeeabrechnungen verwalten und Nachrichten veröffentlichen." }
+    };
+    function showAdminPage(page) {
+        if (!adminPageInfo[page]) return;
+        document.querySelectorAll("[data-admin-panel]").forEach(panel => {
+            panel.hidden = panel.dataset.adminPanel !== page;
+        });
+        document.querySelectorAll("[data-admin-page]").forEach(button => {
+            const active = button.dataset.adminPage === page;
+            button.classList.toggle("active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
+        document.getElementById("pageTitle").textContent = adminPageInfo[page].title;
+        document.getElementById("pageDescription").textContent = adminPageInfo[page].description;
+    }
+
     // Der Token wird getrennt je Gerät und Browserprofil gespeichert.
     const TOKEN_STORAGE_KEY = "huckebein_admin_github_token";
     let githubToken = "";
@@ -637,3 +791,5 @@
         setTimeout(() => loadCurrentConfig(), 800);
     });
 </script>
+</body>
+</html>
