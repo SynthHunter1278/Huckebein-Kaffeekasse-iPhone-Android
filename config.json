@@ -32,7 +32,7 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "Schönes Wochenende",
+    "text": "Hallo Dirk deine FreiKaffee geht erst morgen von 6 bis 15h  online",
     "typ": "info"
   },
   "preise": {
@@ -63,7 +63,7 @@
     "aktiv": false
   },
   "letzteNachricht": {
-    "text": "Keine neue Nachricht",
+    "text": "Schönes Wochenende",
     "typ": "info"
   }
 }
