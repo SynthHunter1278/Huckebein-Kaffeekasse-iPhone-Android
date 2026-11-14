@@ -448,6 +448,14 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
   .action-copy strong { font-size:9px; }
 }
 
+/* Guthabenanzeige: Statuszeilen entfallen, digitaler Betrag wird betont. */
+.balance-status-row,
+.saldo-subtext { display:none !important; }
+.saldo-amount { font-size:30px !important; letter-spacing:0 !important; }
+@media (max-width:340px) {
+  .saldo-amount { font-size:27px !important; }
+}
+
 </style>
 </head>
 <body onload="startApp()">
@@ -545,7 +553,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
               </g>
               <circle class="gauge-hub" cx="130" cy="127" r="8"/>
               <!-- Digitalanzeige bewusst tiefer als die Zeigernabe. -->
-              <rect class="gauge-digital" x="70" y="152" width="120" height="37" rx="7"/>
+              <rect class="gauge-digital" x="62" y="150" width="136" height="42" rx="7"/>
               <text id="my-saldo" class="saldo-amount" x="130" y="171">0,00 €</text>
               <text x="130" y="210" fill="#b8d0df" font-size="9" font-weight="900" text-anchor="middle" letter-spacing="1.6">GUTHABEN</text>
             </svg>
