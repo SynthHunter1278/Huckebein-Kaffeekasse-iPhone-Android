@@ -65,5 +65,10 @@
   "letzteNachricht": {
     "text": "Schönes Wochenende",
     "typ": "info"
+  },
+  "sonderartikel": {
+    "aktiv": true,
+    "name": "Müsliriegel",
+    "preis": 0.3
   }
 }
