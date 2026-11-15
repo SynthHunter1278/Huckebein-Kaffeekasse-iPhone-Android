@@ -641,8 +641,8 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
       </div>
 
       <div id="birthdayBanner" role="status" aria-live="polite">
-        <div class="birthday-title">☕ KAFFEEAKTION – EIN BECHER GRATIS!</div>
-        <div id="birthdayText" class="birthday-detail">Jeder Teilnehmer kann sich einen Becher Kaffee kostenlos abholen.</div>
+        <div class="birthday-title">☕ HEUTE GIBT ES EINEN KAFFEE GRATIS!</div>
+        <div id="birthdayText" class="birthday-detail">Heute spendiert ein Kollege einen Becher Kaffee für alle. Jeder Teilnehmer kann einmalig einen Becher kostenlos abholen.</div>
       </div>
 
       <div class="home-actions" aria-label="Hauptfunktionen">
@@ -732,12 +732,12 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
       <div class="page-heading">
         <div class="page-kicker">Crew-Aktion</div>
         <div class="page-title">Kaffee ausgeben</div>
-        <p class="page-description">Du möchtest deinen Kolleginnen und Kollegen einen Becher Kaffee spendieren? Melde die Kaffeeaktion hier bei der Kassenverwaltung an.</p>
+        <p class="page-description">Du möchtest deinen Kolleginnen und Kollegen einen Becher Kaffee spendieren? Melde deine Kaffeespende hier bei der Kassenverwaltung an.</p>
       </div>
       <div class="panel">
         <div class="panel-heading">So funktioniert es</div>
         <div class="info-list">
-          <div class="info-row"><span class="info-number">1</span><div><strong>Kaffeeaktion anbieten</strong><span>Mit einem Klick meldest du dich mit deinem gespeicherten App-Namen bei der Kassenverwaltung.</span></div></div>
+          <div class="info-row"><span class="info-number">1</span><div><strong>Kaffee spendieren</strong><span>Mit einem Klick meldest du dich mit deinem gespeicherten App-Namen bei der Kassenverwaltung.</span></div></div>
           <div class="info-row"><span class="info-number">2</span><div><strong>Freigabe durch die Verwaltung</strong><span>Die Verwaltung trägt dich als Spender ein und aktiviert die Aktion. Erst danach ist der Kaffee kostenlos.</span></div></div>
           <div class="info-row"><span class="info-number">3</span><div><strong>Ein Becher pro Teilnehmer</strong><span>Zwischen 06:00 und 15:00 Uhr kann jeder Teilnehmer über seine Kassen-App einmalig einen Becher kostenlos abholen. Danach werden die Entnahmen ausgewertet und dir in deiner Kassen-App abgerechnet.</span></div></div>
         </div>
@@ -745,7 +745,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
       <div id="birthdaySponsorCard" class="birthday-sponsor-card">
         <strong>☕ Möchtest du einen Becher Kaffee spendieren?</strong>
         <p>Dein gespeicherter App-Anmeldename wird automatisch an die Kassenverwaltung übermittelt. Du musst keinen Namen erneut eingeben.</p>
-        <button type="button" id="birthdaySponsorButton" class="birthday-sponsor-btn" onclick="requestBirthdaySponsor()">Kaffeeaktion anbieten</button>
+        <button type="button" id="birthdaySponsorButton" class="birthday-sponsor-btn" onclick="requestBirthdaySponsor()">Kaffee spendieren</button>
         <div id="birthdaySponsorStatus" style="margin-top:8px;color:#f6e6b8;font-size:11px;line-height:1.4;"></div>
       </div>
     </section>
@@ -1613,7 +1613,7 @@ function getCalendarWeek(date) {
             status.textContent = "Du bist als Kaffeespender eingetragen.";
         } else {
             button.disabled = false;
-            button.textContent = "Kaffeeaktion anbieten";
+            button.textContent = "Kaffee spendieren";
             status.textContent = "Dein gespeicherter App-Anmeldename wird an die Verwaltung gesendet.";
         }
     }
@@ -1651,7 +1651,7 @@ function getCalendarWeek(date) {
             showStatus("Deine Kaffee-Spenden-Anfrage wurde erfolgreich versendet. Die Verwaltung aktiviert die Aktion.", true);
         } catch (error) {
             button.disabled = false;
-            button.textContent = "Kaffeeaktion anbieten";
+            button.textContent = "Kaffee spendieren";
             showStatus("Anmeldung konnte nicht versendet werden: " + (error?.text || error?.message || "EmailJS-Fehler"), false);
         }
         refreshBirthdaySponsorUi();
