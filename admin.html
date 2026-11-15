@@ -187,6 +187,26 @@
             <div class="availability-item"><label class="switch"><input type="checkbox" id="v_fruehstueck" checked><span class="slider"></span></label><span>Frühstück anzeigen</span></div>
         </div>
                 </div>
+                <div class="content-card">
+                    <h2>⭐ Flexibler Sonderartikel</h2>
+                    <p class="small-note" style="margin-top:-5px;margin-bottom:13px;">Hier kannst du einen wechselnden Artikel anbieten. Name und Preis erscheinen nach dem Veröffentlichen automatisch als zusätzlicher Kaufbutton auf Seite 2 der Kassen-App.</p>
+                    <div class="form-group">
+                        <label for="specialProductName">Produktname:</label>
+                        <input type="text" id="specialProductName" maxlength="40" placeholder="z. B. Müsliriegel" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="specialProductPrice">Verkaufspreis (€):</label>
+                        <input type="number" id="specialProductPrice" min="0.01" max="100" step="0.01" value="1.00" inputmode="decimal">
+                    </div>
+                    <div class="form-group flex-group">
+                        <label class="switch">
+                            <input type="checkbox" id="specialProductActive">
+                            <span class="slider"></span>
+                        </label>
+                        <span>Sonderartikel in der Kassen-App anzeigen</span>
+                    </div>
+                    <p class="small-note">Zum Ausblenden einfach den Schalter ausschalten. Name und Preis bleiben gespeichert und können später wieder aktiviert werden. Der Kauf wird wie ein normales Produkt vom Guthaben abgezogen.</p>
+                </div>
             </section>
 
             <section class="page-panel" data-admin-panel="aufladen" hidden>
@@ -417,6 +437,12 @@
             }
             document.getElementById("paypalActive").checked = Boolean(config.paypal?.aktiv ?? config.paypalEnabled ?? true);
 
+            const special = config.sonderartikel || {};
+            document.getElementById("specialProductActive").checked = Boolean(special.aktiv);
+            document.getElementById("specialProductName").value = String(special.name || "").slice(0, 40);
+            const specialPrice = Number(special.preis);
+            document.getElementById("specialProductPrice").value = Number.isFinite(specialPrice) && specialPrice >= 0.01 && specialPrice <= 100 ? specialPrice.toFixed(2) : "1.00";
+
             configLoaded = true;
             const saveButton = document.querySelector(".btn-save");
             saveButton.disabled = false;
@@ -444,7 +470,19 @@
         };
         let updatedConfig;
         try {
+            const specialProductActive = document.getElementById("specialProductActive").checked;
+            const specialProductName = document.getElementById("specialProductName").value.trim().slice(0, 40);
+            const specialProductPrice = Number(document.getElementById("specialProductPrice").value);
+            if (specialProductActive && !specialProductName) throw new Error("Bitte einen Namen für den Sonderartikel eintragen.");
+            if (!Number.isFinite(specialProductPrice) || specialProductPrice < 0.01 || specialProductPrice > 100) {
+                throw new Error("Bitte für den Sonderartikel einen Preis zwischen 0,01 und 100,00 € eintragen.");
+            }
             updatedConfig = {
+                sonderartikel: {
+                    aktiv: specialProductActive,
+                    name: specialProductName,
+                    preis: Math.round(specialProductPrice * 100) / 100
+                },
                 geburtstag: {
                     aktiv: document.getElementById("freeCoffeeActive").checked,
                     spender: document.getElementById("freeCoffeeGiver").value.trim(),

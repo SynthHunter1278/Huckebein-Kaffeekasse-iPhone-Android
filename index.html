@@ -174,6 +174,8 @@ button { -webkit-tap-highlight-color:transparent; }
 .btn { width:100%; min-height:50px; display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0; padding:13px 14px; border:1px solid #436782; border-radius:11px; color:#f6fbff; font-size:14px; font-weight:800; cursor:pointer; text-align:left; }
 .btn-item { background:linear-gradient(135deg,#214967,#16354e); }
 .btn-fruehstueck { background:linear-gradient(135deg,#176b50,#124b3c); border-color:#25966e; }
+.btn-special { background:linear-gradient(135deg,#80601c,#59420f); border-color:#c49a31; color:#fff8df; }
+.btn-special .product-price { flex:0 0 auto; margin-left:auto; white-space:nowrap; }
 .btn-fruehstueck > .product-label { min-width:0; }
 .btn-fruehstueck > .product-price { flex:0 0 auto; margin-left:auto; white-space:nowrap; }
 .fruehstueck-badge { display:none; margin-left:7px; padding:3px 7px; border-radius:6px; background:#f4c542; color:#14283a !important; font-size:10px; font-weight:900; animation:pulse 2s infinite; }
@@ -682,6 +684,9 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
           <button id="btn-fruehstueck" class="btn btn-fruehstueck" onclick="book(4.00, 'Freitagsfrühstück', true)">
             <span class="product-label">🥐 Freitagsfrühstück <span id="fruehstueckBadge" class="fruehstueck-badge"></span></span><span class="product-price">4,00 €</span>
           </button>
+          <button id="btn-sonderartikel" class="btn btn-special" type="button" style="display:none" onclick="bookSpecialProduct()">
+            <span id="sonderartikelName">⭐ Sonderartikel</span><span id="sonderartikelPrice" class="product-price">0,00 €</span>
+          </button>
         </div>
       </div>
     </section>
@@ -806,6 +811,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
     const CODE_OFFSET = 418952;
     const DEFAULT_PRICES = { kaffee:0.50, cappuccino:0.60, wasser:0.60, soft33:0.90, soft5:0.90, schokokl:0.30, schokogr:0.60, eis:0.50, fruehstueck:4.00 };
     let prices = { ...DEFAULT_PRICES };
+    let specialProduct = { aktiv:false, name:"", preis:0 };
     let birthdayEvent = { aktiv: false, spender: "", datum: "", abrechnung: null };
     let birthdayCoffeeActive = false;
     let birthdaySettlement = null;
@@ -1071,6 +1077,15 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
             productVisibility = Object.fromEntries(
                 Object.values(PRODUCT_IDS).map(id => [id, sourceVisibility[id] !== false])
             );
+            const configuredSpecialProduct = config.sonderartikel || {};
+            const specialName = String(configuredSpecialProduct.name || "").trim().slice(0, 40);
+            const specialPrice = Number(configuredSpecialProduct.preis);
+            const specialPriceValid = Number.isFinite(specialPrice) && specialPrice >= 0.01 && specialPrice <= 100;
+            specialProduct = {
+                aktiv: Boolean(configuredSpecialProduct.aktiv) && Boolean(specialName) && specialPriceValid,
+                name: specialName,
+                preis: specialPriceValid ? Math.round(specialPrice * 100) / 100 : 0
+            };
             paypalEnabled = Boolean(config.paypal?.aktiv ?? config.paypalEnabled ?? true);
             birthdayEvent = config.geburtstag || config.freeCoffee || { aktiv: false, spender: "", datum: "", abrechnung: null };
             birthdayCoffeeActive = isBirthdayEventToday();
@@ -1187,6 +1202,14 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
             const spans = button.querySelectorAll("span");
             if (spans.length) spans[spans.length - 1].textContent = amount.toFixed(2).replace(".", ",") + " €";
         }
+        const specialButton = document.getElementById("btn-sonderartikel");
+        const specialName = document.getElementById("sonderartikelName");
+        const specialPrice = document.getElementById("sonderartikelPrice");
+        const showSpecialProduct = Boolean(specialProduct.aktiv && specialProduct.name && specialProduct.preis >= 0.01);
+        if (specialButton) specialButton.style.display = showSpecialProduct ? "" : "none";
+        if (specialName && showSpecialProduct) specialName.textContent = "⭐ " + specialProduct.name;
+        if (specialPrice && showSpecialProduct) specialPrice.textContent = specialProduct.preis.toFixed(2).replace(".", ",") + " €";
+
         const paypalButton = document.getElementById("paypalButton");
         const paypalMenu = document.getElementById("paypalMenu");
         const paypalCard = document.getElementById("paypalFundingCard");
@@ -1388,6 +1411,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         updateButtonState('btn-schokogr', getPriceForItem('Schokoriegel groß', 0.60));
         updateButtonState('btn-eis', getPriceForItem('Eiscreme', 0.50));
         updateButtonState('btn-fruehstueck', getPriceForItem('Freitagsfrühstück', 4.00));
+        if (specialProduct.aktiv) updateButtonState('btn-sonderartikel', specialProduct.preis);
 
         // Der alte, aus Guthaben und Datum ableitbare Sicherungscode wird nicht mehr angezeigt.
 
@@ -1450,14 +1474,26 @@ function getCalendarWeek(date) {
         return false;
     }
 
-    function book(amount, itemName, triggerEmail = false) {
-        const productId = PRODUCT_ID_BY_NAME[itemName];
+    function bookSpecialProduct() {
+        if (!specialProduct.aktiv || !specialProduct.name || !Number.isFinite(specialProduct.preis) || specialProduct.preis < 0.01) {
+            showStatus("Der Sonderartikel ist derzeit nicht verfügbar.", false);
+            return false;
+        }
+        book(specialProduct.preis, specialProduct.name, false, true);
+    }
+
+    function book(amount, itemName, triggerEmail = false, isSpecialProduct = false) {
+        const productId = isSpecialProduct ? "btn-sonderartikel" : PRODUCT_ID_BY_NAME[itemName];
+        if (isSpecialProduct && (!specialProduct.aktiv || itemName !== specialProduct.name)) {
+            showStatus("Der Sonderartikel wurde inzwischen geändert oder deaktiviert. Bitte die Seite aktualisieren.", false);
+            return false;
+        }
         if (productId && productVisibility[productId] === false) {
             showStatus(itemName + " ist derzeit nicht verfügbar.", false);
             return false;
         }
-        const birthdayFreeCoffee = itemName === "Automaten Kaffee" && isBirthdayFreeWindowNow() && !hasClaimedFreeCoffee();
-        amount = getPriceForItem(itemName, amount);
+        const birthdayFreeCoffee = !isSpecialProduct && itemName === "Automaten Kaffee" && isBirthdayFreeWindowNow() && !hasClaimedFreeCoffee();
+        amount = isSpecialProduct ? specialProduct.preis : getPriceForItem(itemName, amount);
         if (meinSaldo < 0) {
             showStatus("Dein Guthaben ist im Minus. Bitte zuerst aufladen; Produktbuchungen sind gesperrt.", false);
             return false;
@@ -1482,9 +1518,17 @@ function getCalendarWeek(date) {
         pendingBirthdayCoffeeId = birthdayFreeCoffee ? makeEventId("GEB-KAFFEE") : "";
         window.pendingEmailTrigger = triggerEmail || birthdayFreeCoffee;
 
-        document.getElementById('confirmMessage').innerHTML = birthdayFreeCoffee
-            ? `${itemName}<br>Ein kostenloser Becher pro Teilnehmer. Jetzt abrufen?`
-            : `${itemName}<br>für ${amount.toFixed(2).replace('.', ',')} € wirklich buchen?`;
+        const confirmMessage = document.getElementById('confirmMessage');
+        if (isSpecialProduct) {
+            // Der frei eingegebene Artikelname wird als Text gesetzt, nicht als HTML interpretiert.
+            confirmMessage.textContent = `${itemName}\nfür ${amount.toFixed(2).replace('.', ',')} € wirklich buchen?`;
+            confirmMessage.style.whiteSpace = "pre-line";
+        } else {
+            confirmMessage.style.whiteSpace = "";
+            confirmMessage.innerHTML = birthdayFreeCoffee
+                ? `${itemName}<br>Ein kostenloser Becher pro Teilnehmer. Jetzt abrufen?`
+                : `${itemName}<br>für ${amount.toFixed(2).replace('.', ',')} € wirklich buchen?`;
+        }
         document.getElementById('confirmOverlay').style.display = 'flex';
     }
 
