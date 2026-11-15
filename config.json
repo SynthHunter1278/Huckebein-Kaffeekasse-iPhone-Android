@@ -31,7 +31,7 @@
     "aktionsId": "KAFFEE-20261115-1794682968833-UHP0Q"
   },
   "nachricht": {
-    "aktiv": true,
+    "aktiv": false,
     "text": "Hallo Dirk deine FreiKaffee geht erst morgen von 6 bis 15h  online",
     "typ": "info"
   },
