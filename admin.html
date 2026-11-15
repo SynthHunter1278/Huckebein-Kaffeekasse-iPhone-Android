@@ -119,7 +119,7 @@
             <button type="button" class="nav-button active" data-admin-page="overview" onclick="showAdminPage('overview')"><span class="nav-icon">⌂</span><span class="nav-copy"><strong>Übersicht</strong><small>Status & Zugang</small></span></button>
             <button type="button" class="nav-button" data-admin-page="sortiment" onclick="showAdminPage('sortiment')"><span class="nav-icon">☕</span><span class="nav-copy"><strong>Sortiment</strong><small>Produkte & Preise</small></span></button>
             <button type="button" class="nav-button" data-admin-page="aufladen" onclick="showAdminPage('aufladen')"><span class="nav-icon">€</span><span class="nav-copy"><strong>Aufladen</strong><small>PayPal-Funktion</small></span></button>
-            <button type="button" class="nav-button" data-admin-page="aktionen" onclick="showAdminPage('aktionen')"><span class="nav-icon">★</span><span class="nav-copy"><strong>Aktionen</strong><small>Gratiskaffee</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="aktionen" onclick="showAdminPage('aktionen')"><span class="nav-icon">★</span><span class="nav-copy"><strong>Aktionen</strong><small>Kaffee spendieren</small></span></button>
             <button type="button" class="nav-button" data-admin-page="abrechnung" onclick="showAdminPage('abrechnung')"><span class="nav-icon">▤</span><span class="nav-copy"><strong>Abrechnung</strong><small>Abrechnung & Nachrichten</small></span></button>
         </nav>
         <div class="sidebar-foot">Live-Verwaltung über GitHub<br>Änderungen werden gemeinsam veröffentlicht.</div>
@@ -144,7 +144,7 @@
                     <div class="overview-grid">
                         <div class="overview-tile"><strong>☕ Sortiment</strong><span>Verkaufsprodukte ein- oder ausblenden und Preise bearbeiten.</span></div>
                         <div class="overview-tile"><strong>💳 Aufladen</strong><span>Die PayPal-Aufladung für die Kassen-App freigeben oder sperren.</span></div>
-                        <div class="overview-tile"><strong>🎁 Aktionen</strong><span>Eine Gratis-Kaffeeaktion mit Spender und Aktionsdatum einrichten.</span></div>
+                        <div class="overview-tile"><strong>🎁 Aktionen</strong><span>Eine Kaffeespende mit Spender und Datum einrichten.</span></div>
                         <div class="overview-tile"><strong>🧾 Abrechnung</strong><span>Gezählte Kaffees abrechnen, erneut zustellen und Nutzer informieren.</span></div>
                     </div>
                     <p class="small-note">Wichtig: Der Button „Speichern & Live schalten“ am unteren Rand veröffentlicht die Änderungen aus allen Bereichen gemeinsam in config.json. Du musst dafür nicht zur Übersicht zurückkehren.</p>
@@ -231,15 +231,15 @@
                 <input type="checkbox" id="freeCoffeeActive">
                 <span class="slider"></span>
             </label>
-            <span>Aktion aktiv (ein Gratis-Becher pro Teilnehmer)</span>
+            <span>Kaffee spendieren aktiv (ein Becher pro Teilnehmer)</span>
         </div>
         <div class="form-group">
-            <label for="freeCoffeeGiver">App-Anmeldename des Kaffeespenders:</label>
+            <label for="freeCoffeeGiver">Name des Kaffeespenders:</label>
             <input type="text" id="freeCoffeeGiver" placeholder="z. B. Pete" autocomplete="off">
             <p class="small-note">Den Namen exakt so eintragen, wie er in der Spenderanmeldung per E-Mail steht. Nur diese Kassen-App erhält später die persönliche Abrechnung.</p>
         </div>
         <div class="form-group">
-            <label for="freeCoffeeDate">Tag der Kaffeeaktion:</label>
+            <label for="freeCoffeeDate">Datum:</label>
             <input type="date" id="freeCoffeeDate">
         </div>
         <p class="small-note">Am eingetragenen Tag kann jeder Teilnehmer über seine Kassen-App einmalig einen Becher Automatenkaffee von 06:00 bis 15:00 Uhr kostenlos abrufen. Weitere Kaffees und andere Produkte bleiben kostenpflichtig.</p>
@@ -250,10 +250,10 @@
                 <div class="content-card">
                     <h2>🧾 Kaffee-Spenden-Abrechnung</h2>
         <div class="form-group">
-            <label for="birthdayCoffeeCount">Gezählte Gratis-Kaffees (aus den E-Mails):</label>
+            <label for="birthdayCoffeeCount">Anzahl der spendierten Kaffees (aus den E-Mails):</label>
             <input type="number" id="birthdayCoffeeCount" min="1" max="1000" step="1" placeholder="z. B. 24">
         </div>
-        <div class="settlement-preview" id="birthdaySettlementPreview">Bitte nach Ende der Freiphase die Entnahmemeldungen zählen und die Anzahl eintragen.</div>
+        <div class="settlement-preview" id="birthdaySettlementPreview">Bitte nach Ende der Kaffee-Spendenzeit die Entnahmemeldungen zählen und die Anzahl eintragen.</div>
         <button type="button" class="btn-publish" id="publishBirthdayButton" onclick="publishBirthdaySettlement()">🧾 Abrechnung veröffentlichen</button>
         <button type="button" class="btn-resend" id="resendBirthdayButton" onclick="resendBirthdaySettlement()">↻ Vorhandene Abrechnung erneut zustellen</button>
         <p class="small-note">„Erneut zustellen“ veröffentlicht dieselbe offene Abrechnung mit derselben Abrechnungs-ID erneut. Dadurch wird sie auf dem Spendergerät erneut abgefragt, ohne auf demselben Gerät ein zweites Mal abzubuchen.</p>
@@ -295,7 +295,7 @@
         overview: { title: "Übersicht", description: "Status, Zugang und zentrale Speicherfunktion deiner Kaffeekasse." },
         sortiment: { title: "Sortiment", description: "Produkte sichtbar schalten und Verkaufspreise bearbeiten." },
         aufladen: { title: "Aufladen", description: "Die PayPal-Aufladung in der Kassen-App verwalten." },
-        aktionen: { title: "Aktionen", description: "Die Gratis-Kaffeeaktion einrichten und steuern." },
+        aktionen: { title: "Aktionen", description: "Kaffee spendieren und Abrechnung verwalten." },
         abrechnung: { title: "Abrechnung & Kommunikation", description: "Kaffeeabrechnungen verwalten und Nachrichten veröffentlichen." }
     };
     function showAdminPage(page) {
@@ -622,7 +622,7 @@
         const box = document.getElementById("birthdaySettlementPreview");
         if (!box) return;
         if (rawCount === "") {
-            box.textContent = "Bitte nach 15 Uhr die Anzahl der Gratis-Kaffees aus den E-Mails eintragen.";
+            box.textContent = "Bitte nach 15 Uhr die Anzahl der spendierten Kaffees aus den E-Mails eintragen.";
             return;
         }
         if (!Number.isInteger(count) || count < 1 || !Number.isFinite(price) || price < 0) {
