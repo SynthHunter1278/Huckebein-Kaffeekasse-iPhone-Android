@@ -581,17 +581,14 @@
                 ? `KAFFEE-${String(selectedDate || localDateString()).replace(/-/g, "")}-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
                 : existingActionId;
             let retainedSettlement = latestBirthday.abrechnung || null;
-            // Beim Wechsel auf einen anderen Spender oder ein anderes Aktionsdatum
-            // wird die alte Abrechnung archiviert und nicht dem neuen Geburtstag zugeordnet.
-            const archivedSettlements = Array.isArray(latestBirthday.archiv) ? [...latestBirthday.archiv] : [];
+            // Eine Abrechnung bleibt nur erhalten, wenn Spender und Datum unverändert sind.
             if (retainedSettlement && (retainedSettlement.spender !== selectedSpender || retainedSettlement.datum !== selectedDate)) {
-                archivedSettlements.push(retainedSettlement);
                 retainedSettlement = null;
             }
             updatedConfig.geburtstag.abrechnung = retainedSettlement;
-            updatedConfig.geburtstag.archiv = archivedSettlements;
             const finalConfig = { ...latestConfig, ...updatedConfig,
                 geburtstag: { ...latestBirthday, ...updatedConfig.geburtstag } };
+            delete finalConfig.geburtstag.archiv;
 
             const contentBase64 = btoa(Array.from(new TextEncoder().encode(JSON.stringify(finalConfig, null, 2)), b => String.fromCharCode(b)).join(""));
             const response = await fetch(apiUrl(), {
@@ -688,16 +685,14 @@
                 status: "offen",
                 erstellt: new Date().toISOString()
             };
-            const archive = Array.isArray(birthday.archiv) ? [...birthday.archiv] : [];
-            if (existing && (existing.spender !== spender || existing.datum !== eventDate || existing.status !== "offen")) archive.push(existing);
             const nextBirthday = {
                 ...birthday,
                 aktiv: false,
                 spender,
                 datum: eventDate,
-                abrechnung: settlement,
-                archiv: archive
+                abrechnung: settlement
             };
+            delete nextBirthday.archiv;
             const finalConfig = { ...latestConfig, geburtstag: nextBirthday };
             const contentBase64 = btoa(Array.from(new TextEncoder().encode(JSON.stringify(finalConfig, null, 2)), b => String.fromCharCode(b)).join(""));
             const response = await fetch(apiUrl(), {
@@ -760,6 +755,7 @@
                 ...latestConfig,
                 geburtstag: { ...birthday, abrechnung: updatedSettlement }
             };
+            delete finalConfig.geburtstag.archiv;
             const contentBase64 = btoa(Array.from(new TextEncoder().encode(JSON.stringify(finalConfig, null, 2)), b => String.fromCharCode(b)).join(""));
             const putResponse = await fetch(apiUrl(), {
                 method: "PUT",
