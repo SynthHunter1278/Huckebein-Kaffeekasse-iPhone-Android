@@ -32,7 +32,7 @@
   },
   "nachricht": {
     "aktiv": false,
-    "text": "Hallo Dirk deine FreiKaffee geht erst morgen von 6 bis 15h  online",
+    "text": "",
     "typ": "info"
   },
   "preise": {
@@ -68,7 +68,7 @@
   },
   "sonderartikel": {
     "aktiv": true,
-    "name": "Müsliriegel",
-    "preis": 0.3
+    "name": "Wolters 0,33L im Angebot",
+    "preis": 1
   }
 }
