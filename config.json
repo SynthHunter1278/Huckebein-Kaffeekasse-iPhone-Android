@@ -36,7 +36,7 @@
     }
   },
   "paypal": {
-    "aktiv": false
+    "aktiv": true
   },
   "letzteNachricht": {
     "text": "Schönes Wochenende",
