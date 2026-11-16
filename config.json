@@ -1,19 +1,10 @@
 {
   "geburtstag": {
-    "aktiv": false,
-    "spender": "Dirk W",
-    "datum": "2026-11-15",
-    "abrechnung": {
-      "id": "KAFFEE-20261115-1794805346346",
-      "spender": "Dirk W",
-      "datum": "2026-11-15",
-      "anzahl": 12,
-      "einzelpreis": 0.5,
-      "gesamt": 6,
-      "status": "offen",
-      "erstellt": "2026-11-16T05:02:26.346Z"
-    },
-    "aktionsId": "KAFFEE-20261115-1794682968833-UHP0Q"
+    "aktiv": true,
+    "spender": "Uwe Töbermann",
+    "datum": "2026-11-16",
+    "abrechnung": null,
+    "aktionsId": "KAFFEE-20261116-1794823320502-FDRCM"
   },
   "nachricht": {
     "aktiv": false,
