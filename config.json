@@ -8,7 +8,7 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "Herzlich willkommen neue Tester Röxi und Julian",
+    "text": "Keine neue Meldung",
     "typ": "info"
   },
   "preise": {
@@ -39,7 +39,7 @@
     "aktiv": false
   },
   "letzteNachricht": {
-    "text": "Schönes Wochenende",
+    "text": "Herzlich willkommen neue Tester Röxi und Julian",
     "typ": "info"
   },
   "sonderartikel": {
