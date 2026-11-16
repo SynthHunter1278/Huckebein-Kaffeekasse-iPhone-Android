@@ -175,8 +175,13 @@ def main():
     try:
         mail.login(account, password)
         mail.select("INBOX")
-        uids = search_relevant_uids(mail, state.get("last_uid", 0))
-        print(f"{len(uids)} passende Kaffeekassen-Nachrichten seit dem letzten Lauf gefunden.")
+        diagnostic = os.environ.get("SPONSOR_DIAGNOSTIC") == "1"
+        uids = search_relevant_uids(mail, 0 if diagnostic else state.get("last_uid", 0))
+        if diagnostic:
+            uids = uids[-30:]
+            print(f"Diagnosemodus: {len(uids)} neueste passende Nachrichten werden nur anhand ihrer Kopfzeilen geprüft; es wird nichts verändert.")
+        else:
+            print(f"{len(uids)} passende Kaffeekassen-Nachrichten seit dem letzten Lauf gefunden.")
         processed = set(state.get("processed_ids", []))
         changed = False
 
@@ -185,6 +190,11 @@ def main():
             if status != "OK" or not fetched or not isinstance(fetched[0], tuple):
                 raise RuntimeError(f"E-Mail UID {uid} konnte nicht gelesen werden")
             msg = email.message_from_bytes(fetched[0][1])
+            if diagnostic:
+                sender_debug = parseaddr(msg.get("From", ""))[1].strip().casefold()
+                subject_debug = decode_header_value(msg.get("Subject", ""))
+                print(f"DIAG UID {uid}: FROM={sender_debug!r} SUBJECT={subject_debug!r}")
+                continue
             # Nur Nachrichten mit Kaffeekassen-Bezug werden gesucht. Auch deren UID
             # wird markiert, wenn der Absender nicht freigegeben ist, damit derselbe
             # Fremdversand nicht bei jedem 5-Minuten-Lauf erneut geprüft wird.
