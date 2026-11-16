@@ -1,6 +1,10 @@
 name: Automatic coffee sponsor activation
 
 on:
+  push:
+    paths:
+      - ".github/scripts/**"
+      - ".github/workflows/automatic-coffee-sponsor.yml"
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
@@ -27,6 +31,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Validate Python syntax
+        run: python -m py_compile .github/scripts/process_sponsor_mail.py .github/scripts/test_process_sponsor_mail.py
+
+      - name: Run parser tests
+        run: python -m unittest discover -s .github/scripts -p "test_*.py" -v
 
       - name: Process Yahoo sponsor requests
         env:
