@@ -59,6 +59,23 @@ class SponsorMailTests(unittest.TestCase):
         self.assertIsNone(request)
         self.assertEqual(reason, "Keine Spenderanmeldung")
 
+    def test_search_is_limited_to_coffee_kasse_messages(self):
+        class FakeMail:
+            def __init__(self):
+                self.args = None
+
+            def uid(self, *args):
+                self.args = args
+                return "OK", [b"10 11 25"]
+
+        fake = FakeMail()
+        found = sponsor_mail.search_relevant_uids(fake, 10)
+        self.assertEqual(found, [11, 25])
+        self.assertEqual(
+            fake.args,
+            ("search", None, 'OR SUBJECT "KAFFEEKASSE" TEXT "KAFFEEKASSE"'),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
