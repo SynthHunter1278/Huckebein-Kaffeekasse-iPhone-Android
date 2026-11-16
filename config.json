@@ -20,7 +20,7 @@
   "nachricht": {
     "aktiv": true,
     "text": "Zeittest neu",
-    "typ": "warnung"
+    "typ": "info"
   },
   "preise": {
     "btn-kaffee": 0.5,
