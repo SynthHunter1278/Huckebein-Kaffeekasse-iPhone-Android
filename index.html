@@ -737,7 +737,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
       <div class="panel">
         <div class="panel-heading">So funktioniert es</div>
         <div class="info-list">
-          <div class="info-row"><span class="info-number">1</span><div><strong>Kaffee spendieren</strong><span>Mit einem Klick meldest du dich mit deinem gespeicherten App-Namen bei der Kassenverwaltung.</span></div></div>
+          <div class="info-row"><span class="info-number">1</span><div><strong>Kaffee spendieren</strong><span>Mit einem Klick meldest du dich mit deinem gespeicherten App-Namen an. Die erste gültige Anmeldung wird automatisch freigeschaltet.</span></div></div>
           <div class="info-row"><span class="info-number">2</span><div><strong>Freigabe durch die Verwaltung</strong><span>Die Verwaltung trägt dich als Spender ein und aktiviert die Aktion. Erst danach ist der Kaffee kostenlos.</span></div></div>
           <div class="info-row"><span class="info-number">3</span><div><strong>Ein Becher pro Teilnehmer</strong><span>Zwischen 06:00 und 15:00 Uhr kann jeder Teilnehmer über seine Kassen-App einmalig einen Becher kostenlos abholen. Danach werden die Entnahmen ausgewertet und dir in deiner Kassen-App abgerechnet.</span></div></div>
         </div>
@@ -864,6 +864,34 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         const now = new Date();
         const minutes = now.getHours() * 60 + now.getMinutes();
         return minutes >= 6 * 60 && minutes < 15 * 60;
+    }
+
+    // Spenderanmeldungen sind nur während der Gratiskaffeezeit möglich.
+    function isBirthdaySponsorRequestWindowNow() {
+        const now = new Date();
+        const minutes = now.getHours() * 60 + now.getMinutes();
+        return minutes >= 6 * 60 && minutes < 15 * 60;
+    }
+
+    function getBirthdaySponsorLockUntil() {
+        const explicitLock = Date.parse(birthdayEvent.sperreBis || birthdayEvent.freigabeBis || "");
+        if (Number.isFinite(explicitLock)) return new Date(explicitLock);
+        // Rückwärtskompatibilität: auch ältere manuell aktivierte Aktionen ohne Sperrzeit
+        // blockieren bis 06:00 Uhr am Folgetag.
+        if (Boolean(birthdayEvent.aktiv ?? birthdayEvent.active) && birthdayEvent.datum) {
+            const eventDay = new Date(birthdayEvent.datum + "T00:00:00");
+            if (!Number.isNaN(eventDay.getTime())) {
+                eventDay.setDate(eventDay.getDate() + 1);
+                eventDay.setHours(6, 0, 0, 0);
+                if (eventDay.getTime() > Date.now()) return eventDay;
+            }
+        }
+        return null;
+    }
+
+    function isBirthdaySponsorLockActive() {
+        const until = getBirthdaySponsorLockUntil();
+        return Boolean(until && until.getTime() > Date.now());
     }
 
     // Pro Aktion und App-Benutzer ist auf diesem Gerät genau ein kostenloser Becher möglich.
@@ -1602,25 +1630,46 @@ function getCalendarWeek(date) {
         const key = "kaffeekasse_coffee_sponsor_request_" + localDateString();
         let alreadySent = false;
         try { alreadySent = localStorage.getItem(key) === "1"; } catch (_) {}
-        const alreadyActiveSpender = birthdayEvent.spender && normalizeUserName(birthdayEvent.spender) === normalizeUserName(benutzerName) && (birthdayEvent.aktiv || birthdaySettlement);
-        if (alreadySent) {
+        const lockUntil = getBirthdaySponsorLockUntil();
+        const lockActive = Boolean(lockUntil && lockUntil.getTime() > Date.now());
+        if (lockActive) {
+            button.disabled = true;
+            button.textContent = "Kaffeeaktion bereits vergeben";
+            status.textContent = "Die Spenderanmeldung ist bereits vergeben. Neue Anmeldungen sind wieder ab " +
+                lockUntil.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) + " möglich.";
+        } else if (alreadySent) {
             button.disabled = true;
             button.textContent = "Anmeldung bereits gesendet";
             status.textContent = "Deine Kaffee-Spenden-Anfrage wurde heute bereits versendet.";
-        } else if (alreadyActiveSpender) {
-            button.disabled = true;
-            button.textContent = "Kaffeeaktion ist eingetragen";
-            status.textContent = "Du bist als Kaffeespender eingetragen.";
         } else {
             button.disabled = false;
             button.textContent = "Kaffee spendieren";
-            status.textContent = "Dein gespeicherter App-Anmeldename wird an die Verwaltung gesendet.";
+            status.textContent = "Dein gespeicherter App-Anmeldename wird übermittelt. Die erste gültige Anmeldung wird automatisch freigeschaltet.";
         }
     }
 
     async function requestBirthdaySponsor() {
         const button = document.getElementById("birthdaySponsorButton");
         const status = document.getElementById("birthdaySponsorStatus");
+        if (!isBirthdaySponsorRequestWindowNow()) {
+            showStatus("Spenderanmeldungen sind nur zwischen 06:00 und 15:00 Uhr möglich.", false);
+            return;
+        }
+        button.disabled = true;
+        button.textContent = "⏳ Prüfe aktuelle Aktion...";
+        // Vor dem Versand immer den zentralen Status laden. Bei fehlender Verbindung sicherheitshalber abbrechen.
+        const configFresh = await loadPublicConfig();
+        if (!configFresh) {
+            button.disabled = false;
+            button.textContent = "Kaffee spendieren";
+            showStatus("Der zentrale Aktionsstatus konnte nicht geprüft werden. Bitte später erneut versuchen.", false);
+            return;
+        }
+        if (isBirthdaySponsorLockActive()) {
+            refreshBirthdaySponsorUi();
+            showStatus("Die heutige Kaffee-Spenderanmeldung ist bereits vergeben.", false);
+            return;
+        }
         if (!benutzerName || benutzerName === "Unbekannter Teilnehmer" || benutzerName === "Anonymer Teilnehmer") {
             showStatus("Es ist kein gültiger App-Anmeldename gespeichert.", false);
             return;
@@ -1648,7 +1697,7 @@ function getCalendarWeek(date) {
             await emailjs.send("service_j85pq0k", "template_7an5vbo", params);
             try { localStorage.setItem(key, "1"); } catch (_) {}
             status.textContent = "Anmeldung wurde an die Kassenverwaltung gesendet.";
-            showStatus("Deine Kaffee-Spenden-Anfrage wurde erfolgreich versendet. Die Verwaltung aktiviert die Aktion.", true);
+            showStatus("Deine Anfrage wurde versendet. GitHub prüft sie automatisch; die erste gültige Anmeldung wird freigeschaltet.", true);
         } catch (error) {
             button.disabled = false;
             button.textContent = "Kaffee spendieren";
