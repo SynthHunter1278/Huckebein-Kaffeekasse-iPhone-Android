@@ -636,6 +636,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         <div id="noticeBanner" class="notice-banner" role="status" aria-live="polite">
           <span class="notice-heading">📢 Aktuelle Nachricht</span>
           <div id="noticeText"></div>
+          <div id="noticeDiagTime" style="margin-top:7px;color:#a9c3d5;font-size:10px;font-weight:400;letter-spacing:.02em;">Diagnosezeit: noch nicht aktualisiert</div>
         </div>
         <div id="noNoticeHint" style="color:#a9c3d5;font-size:12px;line-height:1.4;">Zurzeit liegen keine aktuellen Meldungen vor.</div>
       </div>
@@ -1291,8 +1292,11 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
                 }
 
                 messageText.textContent = currentNotice.text;
+                const noticeDiagTime = document.getElementById("noticeDiagTime");
+                const noticeInsertedAt = new Date();
+                if (noticeDiagTime) noticeDiagTime.textContent = "Diagnose: Meldung eingesetzt um " + noticeInsertedAt.toLocaleTimeString("de-DE");
                 banner.style.display = "block";
-                diagLog("Abruf #" + diagLoadId + ": Meldung im DOM eingesetzt");
+                diagLog("Abruf #" + diagLoadId + ": Meldung im DOM eingesetzt um " + noticeInsertedAt.toLocaleTimeString("de-DE"));
                 diagCheckNoticePaint(diagLoadId);
                 const isWarning = currentNotice.typ === "warnung";
                 banner.style.background = isWarning ? "#3d2028" : "#102b43";
