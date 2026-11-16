@@ -152,9 +152,10 @@ def main():
             if request_time.date() != now.date() or not (START <= request_time.time().replace(tzinfo=None) < END):
                 print(f"UID {uid}: außerhalb des Anmeldezeitfensters")
                 continue
-            # Nicht verspätet eine Aktion für einen bereits vergangenen Tag aktivieren.
-            if now.date() != request_time.date() or not (START <= now.time().replace(tzinfo=None) < END):
-                print(f"UID {uid}: Verarbeitung außerhalb des Aktionszeitfensters")
+            # Ein verspäteter GitHub-Start darf eine rechtzeitig eingegangene Anmeldung
+            # nicht verwerfen. Die Zeit des tatsächlichen Antrags ist maßgeblich.
+            if now.date() != request_time.date():
+                print(f"UID {uid}: Anmeldung gehört zu einem anderen Kalendertag")
                 continue
             lock_raw = birthday.get("sperreBis", "")
             try:
