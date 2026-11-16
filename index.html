@@ -1121,8 +1121,30 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         console.info("[Kaffeekasse-Diagnose]", line);
     }
 
+    // Prüft, wann der Browser die bereits eingesetzte Meldung tatsächlich rendern kann.
+    function diagCheckNoticePaint(loadId) {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            const banner = document.getElementById("noticeBanner");
+            const text = document.getElementById("noticeText");
+            if (!banner || !text) return;
+            const style = getComputedStyle(banner);
+            const rect = banner.getBoundingClientRect();
+            diagLog("Renderprüfung Abruf #" + loadId + ": display=" + style.display +
+                ", visibility=" + style.visibility + ", Höhe=" + Math.round(rect.height) +
+                "px, Textlänge=" + text.textContent.length +
+                ", Sichtbarkeit=" + document.visibilityState);
+        }));
+    }
+
     async function startApp() {
         diagLog("startApp beginnt; Seite seit " + Math.round(performance.now()) + " ms geladen");
+        let diagHeartbeatAt = performance.now();
+        setInterval(() => {
+            const now = performance.now();
+            const delay = now - diagHeartbeatAt;
+            if (delay > 1800) diagLog("Hauptthread war " + Math.round(delay) + " ms blockiert/angehalten");
+            diagHeartbeatAt = now;
+        }, 1000);
         updateClockInstruments();
         startPublicConfigAutoRefresh();
         if (!instrumentClockTimer) instrumentClockTimer = setInterval(updateClockInstruments, 15000);
@@ -1271,6 +1293,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
                 messageText.textContent = currentNotice.text;
                 banner.style.display = "block";
                 diagLog("Abruf #" + diagLoadId + ": Meldung im DOM eingesetzt");
+                diagCheckNoticePaint(diagLoadId);
                 const isWarning = currentNotice.typ === "warnung";
                 banner.style.background = isWarning ? "#3d2028" : "#102b43";
                 banner.style.color = isWarning ? "#ffd7dc" : "#edf7ff";
