@@ -196,7 +196,11 @@ def main():
                 to_debug = parseaddr(msg.get("To", ""))[1].strip().casefold()
                 subject_debug = decode_header_value(msg.get("Subject", ""))
                 request_debug, request_reason = parse_request(msg, uid)
-                confirm_debug, confirm_reason = parse_confirmation(msg, uid)
+                confirmation_debug = parse_confirmation(msg, uid)
+                if confirmation_debug:
+                    confirm_debug, confirm_reason = confirmation_debug
+                else:
+                    confirm_debug, confirm_reason = None, "Keine Abrechnungsbestätigung"
                 if request_debug:
                     parsed_debug = f"REQUEST name={request_debug['name']!r} id={request_debug['request_id']!r} at={request_debug['requested_at'].isoformat()}"
                 elif confirm_debug:
