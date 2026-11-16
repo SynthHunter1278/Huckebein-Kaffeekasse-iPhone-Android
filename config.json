@@ -19,7 +19,7 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "TEST NACHRICHT 456",
+    "text": "TEST NACHRICHT 789",
     "typ": "warnung"
   },
   "preise": {
@@ -50,8 +50,8 @@
     "aktiv": false
   },
   "letzteNachricht": {
-    "text": "TEST NACHRICHT 123",
-    "typ": "info"
+    "text": "TEST NACHRICHT 456",
+    "typ": "warnung"
   },
   "sonderartikel": {
     "aktiv": false,
