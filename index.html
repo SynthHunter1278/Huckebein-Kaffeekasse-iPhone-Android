@@ -876,13 +876,15 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
     function getBirthdaySponsorLockUntil() {
         const explicitLock = Date.parse(birthdayEvent.sperreBis || birthdayEvent.freigabeBis || "");
         if (Number.isFinite(explicitLock)) return new Date(explicitLock);
-        // Rückwärtskompatibilität: eine manuell aktivierte Aktion sperrt ebenfalls bis morgen 06:00 Uhr.
-        if (Boolean(birthdayEvent.aktiv ?? birthdayEvent.active) &&
-            (birthdayEvent.datum || "") === localDateString()) {
-            const fallback = new Date();
-            fallback.setDate(fallback.getDate() + 1);
-            fallback.setHours(6, 0, 0, 0);
-            return fallback;
+        // Rückwärtskompatibilität: auch ältere manuell aktivierte Aktionen ohne Sperrzeit
+        // blockieren bis 06:00 Uhr am Folgetag.
+        if (Boolean(birthdayEvent.aktiv ?? birthdayEvent.active) && birthdayEvent.datum) {
+            const eventDay = new Date(birthdayEvent.datum + "T00:00:00");
+            if (!Number.isNaN(eventDay.getTime())) {
+                eventDay.setDate(eventDay.getDate() + 1);
+                eventDay.setHours(6, 0, 0, 0);
+                if (eventDay.getTime() > Date.now()) return eventDay;
+            }
         }
         return null;
     }
