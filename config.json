@@ -19,7 +19,7 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "000000000",
+    "text": "11111111111111",
     "typ": "warnung"
   },
   "preise": {
@@ -50,8 +50,8 @@
     "aktiv": false
   },
   "letzteNachricht": {
-    "text": "123456",
-    "typ": "info"
+    "text": "000000000",
+    "typ": "warnung"
   },
   "sonderartikel": {
     "aktiv": false,
