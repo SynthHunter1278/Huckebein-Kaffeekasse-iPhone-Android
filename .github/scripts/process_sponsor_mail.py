@@ -162,6 +162,13 @@ def main():
                 lock_until = datetime.fromisoformat(lock_raw.replace("Z", "+00:00")).astimezone(TZ) if lock_raw else None
             except ValueError:
                 lock_until = None
+            # Auch manuell aktivierte Alt-Aktionen ohne explizite Sperrzeit berücksichtigen.
+            if not lock_until and bool(birthday.get("aktiv", birthday.get("active", False))) and birthday.get("datum"):
+                try:
+                    event_day = datetime.strptime(birthday["datum"], "%Y-%m-%d").date()
+                    lock_until = datetime.combine(event_day + timedelta(days=1), START, TZ)
+                except ValueError:
+                    lock_until = None
             if lock_until and lock_until > now:
                 print(f"UID {uid}: Sperre bis {lock_until.isoformat()} aktiv")
                 continue
