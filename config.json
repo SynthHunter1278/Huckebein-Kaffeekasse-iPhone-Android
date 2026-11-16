@@ -20,7 +20,7 @@
   "nachricht": {
     "aktiv": true,
     "text": "TEST NACHRICHT 789",
-    "typ": "warnung"
+    "typ": "info"
   },
   "preise": {
     "btn-kaffee": 0.5,
