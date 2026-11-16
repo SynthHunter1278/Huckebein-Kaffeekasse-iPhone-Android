@@ -42,4 +42,5 @@ jobs:
         env:
           YAHOO_EMAIL: ${{ secrets.YAHOO_EMAIL }}
           YAHOO_APP_PASSWORD: ${{ secrets.YAHOO_APP_PASSWORD }}
+          SPONSOR_DIAGNOSTIC: "1"
         run: python .github/scripts/process_sponsor_mail.py
