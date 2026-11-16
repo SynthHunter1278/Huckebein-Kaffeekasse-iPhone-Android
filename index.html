@@ -1119,16 +1119,35 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
 
     async function loadPublicConfig() {
         try {
-            // Zeitstempel plus no-store erzwingen bei jedem Abruf eine frische Konfiguration.
-            const configUrl = new URL("./config.json", window.location.href);
-            configUrl.searchParams.set("cb", Date.now().toString());
-            const response = await fetch(configUrl.toString(), {
-                method: "GET",
-                cache: "no-store",
-                headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" }
-            });
-            if (!response.ok) throw new Error("HTTP " + response.status);
-            const config = await response.json();
+            // Konfiguration zuerst direkt aus dem GitHub-Repository laden.
+            // Dadurch muss nicht auf den GitHub-Pages-Build gewartet werden.
+            // Falls raw.githubusercontent.com nicht erreichbar ist, dient Pages als Rückfall.
+            const configUrls = [
+                "https://raw.githubusercontent.com/SynthHunter1278/Huckebein-Kaffeekasse-iPhone-Android/main/config.json",
+                new URL("./config.json", window.location.href).toString()
+            ];
+            let config = null;
+            let lastConfigError = null;
+
+            for (const configUrl of configUrls) {
+                try {
+                    const freshUrl = new URL(configUrl);
+                    freshUrl.searchParams.set("cb", Date.now().toString());
+                    const response = await fetch(freshUrl.toString(), {
+                        method: "GET",
+                        cache: "no-store",
+                        headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" }
+                    });
+                    if (!response.ok) throw new Error("HTTP " + response.status);
+                    config = await response.json();
+                    break;
+                } catch (fetchError) {
+                    lastConfigError = fetchError;
+                    console.warn("Konfigurationsquelle nicht erreichbar:", configUrl, fetchError);
+                }
+            }
+
+            if (!config) throw (lastConfigError || new Error("Konfiguration konnte nicht geladen werden."));
             // Fehlende Einträge fallen auf Standardpreise zurück und übernehmen keine Altwerte.
             prices = { ...DEFAULT_PRICES };
             const sourcePrices = config.preise || config.prices || {};
