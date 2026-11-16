@@ -8,7 +8,7 @@ import re
 import subprocess
 from datetime import datetime, time, timedelta
 from email.header import decode_header
-from email.utils import parsedate_to_datetime
+from email.utils import parseaddr, parsedate_to_datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -18,6 +18,7 @@ STATE = ROOT / ".github" / "state" / "sponsor-mail-state.json"
 TZ = ZoneInfo("Europe/Berlin")
 START = time(6, 0)
 END = time(15, 0)
+ALLOWED_SENDER = "toeber2000@yahoo.de"
 
 def load_json(path, default):
     if not path.exists():
@@ -172,6 +173,10 @@ def main():
             if status != "OK" or not fetched or not isinstance(fetched[0], tuple):
                 raise RuntimeError(f"E-Mail UID {uid} konnte nicht gelesen werden")
             msg = email.message_from_bytes(fetched[0][1])
+            sender = parseaddr(msg.get("From", ""))[1].strip().casefold()
+            if sender != ALLOWED_SENDER:
+                print(f"UID {uid}: Absender {sender or '(unbekannt)'} nicht erlaubt")
+                continue
             confirmation, confirmation_reason = parse_confirmation(msg, uid)
             state["last_uid"] = uid
             changed = True
