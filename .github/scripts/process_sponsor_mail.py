@@ -175,7 +175,7 @@ def main():
     try:
         mail.login(account, password)
         mail.select("INBOX")
-        diagnostic = os.environ.get("SPONSOR_DIAGNOSTIC") == "1"
+        diagnostic = True  # Temporary, read-only inspection of the latest matching message headers
         uids = search_relevant_uids(mail, 0 if diagnostic else state.get("last_uid", 0))
         if diagnostic:
             uids = uids[-30:]
