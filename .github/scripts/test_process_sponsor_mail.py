@@ -30,7 +30,7 @@ class SponsorMailTests(unittest.TestCase):
     def test_valid_sponsor_request(self):
         msg = make_mail(
             "KAFFEEKASSE - KAFFEE SPENDIEREN - SPENDERANMELDUNG",
-            "Anmelde-ID: request-12345678\\nuser: Testperson\\ntimestamp: 16.11.2026, 12:00:00",
+            "Anmelde-ID: request-12345678\nuser: Testperson\ntimestamp: 16.11.2026, 12:00:00",
         )
         request, reason = sponsor_mail.parse_request(msg, 101)
         self.assertEqual(reason, "")
@@ -42,7 +42,7 @@ class SponsorMailTests(unittest.TestCase):
     def test_valid_settlement_confirmation(self):
         msg = make_mail(
             "KAFFEEKASSE - ABBUCHUNG BESTÄTIGT",
-            "Abrechnungs-ID: KAFFEE-20261116-1794840389876\\nuser: Testperson",
+            "Abrechnungs-ID: KAFFEE-20261116-1794840389876\nuser: Testperson",
         )
         confirmation, reason = sponsor_mail.parse_confirmation(msg, 102)
         self.assertEqual(reason, "")
