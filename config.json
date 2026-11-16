@@ -19,7 +19,7 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "Keine neue Meldung",
+    "text": "TEST NACHRICHT 123",
     "typ": "info"
   },
   "preise": {
@@ -50,7 +50,7 @@
     "aktiv": false
   },
   "letzteNachricht": {
-    "text": "Herzlich willkommen neue Tester Röxi und Julian",
+    "text": "Keine neue Meldung",
     "typ": "info"
   },
   "sonderartikel": {
