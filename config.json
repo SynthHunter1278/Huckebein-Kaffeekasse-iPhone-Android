@@ -7,7 +7,7 @@
     "aktionsId": "KAFFEE-20261116-1794823320502-FDRCM"
   },
   "nachricht": {
-    "aktiv": false,
+    "aktiv": true,
     "text": "Herzlich willkommen neue Tester Röxi und Julian",
     "typ": "info"
   },
