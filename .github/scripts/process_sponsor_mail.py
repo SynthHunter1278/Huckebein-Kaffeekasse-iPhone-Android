@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+"""Process Yahoo EmailJS coffee-sponsor requests and update config.json safely."""
+import email
+import imaplib
+import json
+import os
+import re
+import subprocess
+from datetime import datetime, time, timedelta
+from email.header import decode_header
+from email.utils import parsedate_to_datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+ROOT = Path(__file__).resolve().parents[2]
+CONFIG = ROOT / "config.json"
+STATE = ROOT / ".github" / "state" / "sponsor-mail-state.json"
+TZ = ZoneInfo("Europe/Berlin")
+START = time(6, 0)
+END = time(15, 0)
+
+def load_json(path, default):
+    if not path.exists():
+        return default
+    return json.loads(path.read_text(encoding="utf-8"))
+
+def decode_header_value(value):
+    if not value:
+        return ""
+    parts = []
+    for chunk, enc in decode_header(value):
+        if isinstance(chunk, bytes):
+            parts.append(chunk.decode(enc or "utf-8", errors="replace"))
+        else:
+            parts.append(chunk)
+    return "".join(parts)
+
+def message_text(msg):
+    chunks = []
+    if msg.is_multipart():
+        parts = msg.walk()
+    else:
+        parts = [msg]
+    for part in parts:
+        if part.get_content_maintype() == "multipart":
+            continue
+        ctype = part.get_content_type()
+        if ctype not in ("text/plain", "text/html"):
+            continue
+        payload = part.get_payload(decode=True)
+        if payload is None:
+            continue
+        charset = part.get_content_charset() or "utf-8"
+        text = payload.decode(charset, errors="replace")
+        text = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", text)
+        text = re.sub(r"(?i)<br\s*/?>|</p>|</div>|</tr>", "\n", text)
+        text = re.sub(r"<[^>]+>", " ", text)
+        text = (text.replace("&nbsp;", " ").replace("&amp;", "&")
+                    .replace("&quot;", '"').replace("&#39;", "'"))
+        chunks.append(text)
+    return "\n".join(chunks)
+
+def field(text, names):
+    for name in names:
+        match = re.search(r"(?im)^\s*" + re.escape(name) + r"\s*[:=]\s*(.*?)\s*$", text)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+def parse_request(msg, uid):
+    subject = decode_header_value(msg.get("Subject", ""))
+    body = message_text(msg)
+    combined = subject + "\n" + body
+    if "SPENDERANMELDUNG" not in combined.upper() or "KAFFEE SPENDIEREN" not in combined.upper():
+        return None, "Keine Spenderanmeldung"
+    request_id = ""
+    m = re.search(r"(?:Anmelde-ID|notification_id)\s*[:=]\s*([A-Za-z0-9_-]{8,100})", combined, re.I)
+    if m:
+        request_id = m.group(1)
+    if not request_id:
+        return None, "Anmelde-ID fehlt"
+    name = field(body, ["user", "Name", "Teilnehmer", "App-Name"])
+    if not name:
+        # EmailJS templates sometimes render parameters as a compact key/value row.
+        m = re.search(r"(?im)\buser\b\s*[:=]\s*([^\r\n<]{1,80})", body)
+        if m:
+            name = m.group(1).strip()
+    name = re.sub(r"\s+", " ", name).strip()
+    if not name or len(name) > 60 or name.lower() in ("unbekannter teilnehmer", "anonymer teilnehmer"):
+        return None, "Teilnehmername fehlt oder ist ungültig"
+    stamp = field(body, ["timestamp", "Zeitstempel", "Datum"])
+    request_time = None
+    if stamp:
+        for fmt in ("%d.%m.%Y, %H:%M:%S", "%d.%m.%Y, %H:%M", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M"):
+            try:
+                request_time = datetime.strptime(stamp, fmt).replace(tzinfo=TZ)
+                break
+            except ValueError:
+                pass
+    if request_time is None:
+        try:
+            request_time = parsedate_to_datetime(msg.get("Date")).astimezone(TZ)
+        except Exception:
+            return None, "Zeitstempel fehlt oder ist nicht lesbar"
+    return {"uid": str(uid), "request_id": request_id, "name": name, "requested_at": request_time}, ""
+
+def commit_state():
+    subprocess.run(["git", "config", "user.name", "github-actions[bot]"], cwd=ROOT, check=True)
+    subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], cwd=ROOT, check=True)
+    subprocess.run(["git", "add", ".github/state/sponsor-mail-state.json", "config.json"], cwd=ROOT, check=True)
+    changed = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
+    if changed.returncode == 1:
+        subprocess.run(["git", "commit", "-m", "Automatische Kaffee-Spenderfreigabe"], cwd=ROOT, check=True)
+        subprocess.run(["git", "push"], cwd=ROOT, check=True)
+
+def main():
+    account = os.environ["YAHOO_EMAIL"]
+    password = os.environ["YAHOO_APP_PASSWORD"]
+    state = load_json(STATE, {"last_uid": 0, "processed_ids": []})
+    config = load_json(CONFIG, {})
+    birthday = config.setdefault("geburtstag", {})
+    now = datetime.now(TZ)
+
+    mail = imaplib.IMAP4_SSL("imap.mail.yahoo.com", 993)
+    try:
+        mail.login(account, password)
+        mail.select("INBOX")
+        status, data = mail.uid("search", None, "ALL")
+        if status != "OK":
+            raise RuntimeError("Yahoo-Postfach konnte nicht durchsucht werden")
+        uids = [int(x) for x in data[0].split() if x.isdigit() and int(x) > int(state.get("last_uid", 0))]
+        processed = set(state.get("processed_ids", []))
+        changed = False
+
+        for uid in sorted(uids):
+            status, fetched = mail.uid("fetch", str(uid), "(RFC822)")
+            if status != "OK" or not fetched or not isinstance(fetched[0], tuple):
+                raise RuntimeError(f"E-Mail UID {uid} konnte nicht gelesen werden")
+            msg = email.message_from_bytes(fetched[0][1])
+            request, reason = parse_request(msg, uid)
+            state["last_uid"] = uid
+            changed = True
+            if not request:
+                print(f"UID {uid}: ignoriert ({reason})")
+                continue
+            if request["request_id"] in processed:
+                print(f"UID {uid}: doppelte Anmelde-ID ignoriert")
+                continue
+            processed.add(request["request_id"])
+            request_time = request["requested_at"]
+            # Nur Anmeldungen, die tatsächlich zwischen 06:00 und 15:00 Uhr eingingen.
+            if request_time.date() != now.date() or not (START <= request_time.time().replace(tzinfo=None) < END):
+                print(f"UID {uid}: außerhalb des Anmeldezeitfensters")
+                continue
+            # Nicht verspätet eine Aktion für einen bereits vergangenen Tag aktivieren.
+            if now.date() != request_time.date() or not (START <= now.time().replace(tzinfo=None) < END):
+                print(f"UID {uid}: Verarbeitung außerhalb des Aktionszeitfensters")
+                continue
+            lock_raw = birthday.get("sperreBis", "")
+            try:
+                lock_until = datetime.fromisoformat(lock_raw.replace("Z", "+00:00")).astimezone(TZ) if lock_raw else None
+            except ValueError:
+                lock_until = None
+            if lock_until and lock_until > now:
+                print(f"UID {uid}: Sperre bis {lock_until.isoformat()} aktiv")
+                continue
+            settlement = birthday.get("abrechnung") or {}
+            if settlement.get("status") == "offen":
+                print(f"UID {uid}: offene Abrechnung vorhanden; keine neue Aktion wird gestartet")
+                continue
+            # Der bestehende Abrechnungseintrag bleibt unangetastet.
+            next_morning = datetime.combine(request_time.date() + timedelta(days=1), START, TZ)
+            birthday.update({
+                "aktiv": True,
+                "spender": request["name"],
+                "datum": request_time.date().isoformat(),
+                "aktionsId": "KAFFEE-" + request_time.strftime("%Y%m%d-%H%M%S") + "-" + request["request_id"][-8:],
+                "sperreBis": next_morning.isoformat(),
+                "freigabeZeitpunkt": request_time.isoformat(),
+                "automatischFreigegeben": True
+            })
+            print(f"Freigeschaltet: {request['name']} (Anmelde-ID {request['request_id']})")
+            # Nur eine Anfrage je Sperrfenster freischalten.
+            break
+
+        state["processed_ids"] = sorted(processed)[-1000:]
+        if changed:
+            STATE.parent.mkdir(parents=True, exist_ok=True)
+            STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        if changed:
+            commit_state()
+    finally:
+        try:
+            mail.logout()
+        except Exception:
+            pass
+
+if __name__ == "__main__":
+    main()
