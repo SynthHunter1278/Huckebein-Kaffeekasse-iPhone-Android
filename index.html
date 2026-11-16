@@ -1107,7 +1107,6 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
     }
 
     // Vorübergehende Diagnose der Ladezeiten (wird nach der Fehlersuche wieder entfernt).
-    let diagSequence = 0;
     let diagLoadSequence = 0;
     function diagLog(message) {
         const panel = document.getElementById("diagnosticLog");
@@ -1129,8 +1128,11 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         if (!instrumentClockTimer) instrumentClockTimer = setInterval(updateClockInstruments, 15000);
         if (localStorage.getItem(ACCESS_STORAGE_KEY) === "1") {
             document.getElementById("accessGate").style.display = "none";
+            const configStarted = performance.now();
             await loadPublicConfig();
+            diagLog("Start-Konfiguration abgeschlossen nach " + Math.round(performance.now() - configStarted) + " ms");
             init();
+            diagLog("init() abgeschlossen");
             triggerBirthdayAttention();
         } else {
             document.getElementById("accessCodeInput").focus();
