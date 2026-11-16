@@ -11,7 +11,9 @@
       "einzelpreis": 0.5,
       "gesamt": 6,
       "status": "offen",
-      "erstellt": "2026-11-16T14:46:29.876Z"
+      "erstellt": "2026-11-16T14:46:29.876Z",
+      "erneutVeröffentlicht": "2026-11-16T17:34:35.890Z",
+      "erneutVeröffentlichtAnzahl": 1
     },
     "aktionsId": "KAFFEE-20261116-1794828374170-P09DY"
   },
