@@ -19,7 +19,7 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "Zeittest neu",
+    "text": "123456",
     "typ": "info"
   },
   "preise": {
@@ -50,7 +50,7 @@
     "aktiv": false
   },
   "letzteNachricht": {
-    "text": "Zeittest",
+    "text": "Zeittest neu",
     "typ": "info"
   },
   "sonderartikel": {
