@@ -140,6 +140,16 @@ def parse_request(msg, uid):
             return None, "Zeitstempel fehlt oder ist nicht lesbar"
     return {"uid": str(uid), "request_id": request_id, "name": name, "requested_at": request_time}, ""
 
+def is_signup_time_valid(request_time, now):
+    """Only accept requests from today, between 06:00 inclusive and 15:00 exclusive."""
+    local_request = request_time.astimezone(TZ)
+    local_now = now.astimezone(TZ)
+    return (
+        local_request.date() == local_now.date()
+        and START <= local_request.time().replace(tzinfo=None) < END
+    )
+
+
 def search_relevant_uids(mail, last_uid):
     """Search only coffee-kasse notifications instead of downloading the whole inbox."""
     status, data = mail.uid(
@@ -260,7 +270,7 @@ def main():
             processed.add(request["request_id"])
             request_time = request["requested_at"]
             # Nur Anmeldungen, die tatsächlich zwischen 06:00 und 15:00 Uhr eingingen.
-            if request_time.date() != now.date() or not (START <= request_time.time().replace(tzinfo=None) < END):
+            if not is_signup_time_valid(request_time, now):
                 print(f"UID {uid}: außerhalb des Anmeldezeitfensters")
                 continue
             # Ein verspäteter GitHub-Start darf eine rechtzeitig eingegangene Anmeldung
