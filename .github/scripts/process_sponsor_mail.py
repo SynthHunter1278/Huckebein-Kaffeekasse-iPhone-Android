@@ -140,6 +140,20 @@ def parse_request(msg, uid):
             return None, "Zeitstempel fehlt oder ist nicht lesbar"
     return {"uid": str(uid), "request_id": request_id, "name": name, "requested_at": request_time}, ""
 
+def search_relevant_uids(mail, last_uid):
+    """Search only coffee-kasse notifications instead of downloading the whole inbox."""
+    status, data = mail.uid(
+        "search", None,
+        'OR SUBJECT "KAFFEEKASSE" TEXT "KAFFEEKASSE"'
+    )
+    if status != "OK":
+        raise RuntimeError("Yahoo-Postfach konnte nicht nach Kaffeekassen-Nachrichten durchsucht werden")
+    return [
+        int(value) for value in data[0].split()
+        if value.isdigit() and int(value) > int(last_uid)
+    ]
+
+
 def commit_state():
     subprocess.run(["git", "config", "user.name", "github-actions[bot]"], cwd=ROOT, check=True)
     subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], cwd=ROOT, check=True)
@@ -161,10 +175,8 @@ def main():
     try:
         mail.login(account, password)
         mail.select("INBOX")
-        status, data = mail.uid("search", None, "ALL")
-        if status != "OK":
-            raise RuntimeError("Yahoo-Postfach konnte nicht durchsucht werden")
-        uids = [int(x) for x in data[0].split() if x.isdigit() and int(x) > int(state.get("last_uid", 0))]
+        uids = search_relevant_uids(mail, state.get("last_uid", 0))
+        print(f"{len(uids)} passende Kaffeekassen-Nachrichten seit dem letzten Lauf gefunden.")
         processed = set(state.get("processed_ids", []))
         changed = False
 
@@ -173,13 +185,16 @@ def main():
             if status != "OK" or not fetched or not isinstance(fetched[0], tuple):
                 raise RuntimeError(f"E-Mail UID {uid} konnte nicht gelesen werden")
             msg = email.message_from_bytes(fetched[0][1])
-            sender = parseaddr(msg.get("From", ""))[1].strip().casefold()
-            if sender != ALLOWED_SENDER:
-                print(f"UID {uid}: Absender {sender or '(unbekannt)'} nicht erlaubt")
-                continue
-            confirmation, confirmation_reason = parse_confirmation(msg, uid)
+            # Nur Nachrichten mit Kaffeekassen-Bezug werden gesucht. Auch deren UID
+            # wird markiert, wenn der Absender nicht freigegeben ist, damit derselbe
+            # Fremdversand nicht bei jedem 5-Minuten-Lauf erneut geprüft wird.
             state["last_uid"] = uid
             changed = True
+            sender = parseaddr(msg.get("From", ""))[1].strip().casefold()
+            if sender != ALLOWED_SENDER:
+                print(f"UID {uid}: passende Betreff-/Textnachricht, aber Absender {sender or '(unbekannt)'} nicht freigegeben")
+                continue
+            confirmation, confirmation_reason = parse_confirmation(msg, uid)
             if confirmation:
                 settlement = birthday.get("abrechnung") or {}
                 confirmation_key = "CONFIRM:" + confirmation.get("settlement_id", "")
