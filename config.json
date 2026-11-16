@@ -19,8 +19,8 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "123456",
-    "typ": "info"
+    "text": "000000000",
+    "typ": "warnung"
   },
   "preise": {
     "btn-kaffee": 0.5,
@@ -50,7 +50,7 @@
     "aktiv": false
   },
   "letzteNachricht": {
-    "text": "Zeittest neu",
+    "text": "123456",
     "typ": "info"
   },
   "sonderartikel": {
