@@ -192,8 +192,18 @@ def main():
             msg = email.message_from_bytes(fetched[0][1])
             if diagnostic:
                 sender_debug = parseaddr(msg.get("From", ""))[1].strip().casefold()
+                reply_debug = parseaddr(msg.get("Reply-To", ""))[1].strip().casefold()
+                to_debug = parseaddr(msg.get("To", ""))[1].strip().casefold()
                 subject_debug = decode_header_value(msg.get("Subject", ""))
-                print(f"DIAG UID {uid}: FROM={sender_debug!r} SUBJECT={subject_debug!r}")
+                request_debug, request_reason = parse_request(msg, uid)
+                confirm_debug, confirm_reason = parse_confirmation(msg, uid)
+                if request_debug:
+                    parsed_debug = f"REQUEST name={request_debug['name']!r} id={request_debug['request_id']!r} at={request_debug['requested_at'].isoformat()}"
+                elif confirm_debug:
+                    parsed_debug = f"CONFIRM id={confirm_debug.get('settlement_id')!r} name={confirm_debug.get('name')!r}"
+                else:
+                    parsed_debug = f"NO_MATCH request={request_reason!r} confirmation={confirm_reason!r}"
+                print(f"DIAG UID {uid}: FROM={sender_debug!r} REPLY_TO={reply_debug!r} TO={to_debug!r} SUBJECT={subject_debug!r} {parsed_debug}")
                 continue
             # Nur Nachrichten mit Kaffeekassen-Bezug werden gesucht. Auch deren UID
             # wird markiert, wenn der Absender nicht freigegeben ist, damit derselbe
