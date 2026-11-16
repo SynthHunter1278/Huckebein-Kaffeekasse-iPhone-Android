@@ -67,6 +67,41 @@ def field(text, names):
             return match.group(1).strip()
     return ""
 
+def parse_confirmation(msg, uid):
+    """Recognize the app's explicit settlement-confirmation email."""
+    subject = decode_header_value(msg.get("Subject", ""))
+    body = message_text(msg)
+    combined = subject + "\\n" + body
+    normalized = combined.upper().replace("Ä", "AE").replace("Ö", "OE").replace("Ü", "UE")
+    if "ABBUCHUNG BESTAETIGT" not in normalized and "ABBUCHUNG BESTÄTIGT" not in combined.upper():
+        return None
+    settlement_id = ""
+    m = re.search(r"(?:Abrechnungs-ID|settlement_id)\\s*[:=]\\s*(KAFFEE-[A-Za-z0-9_-]{8,100})", combined, re.I)
+    if m:
+        settlement_id = m.group(1).strip()
+    if not settlement_id:
+        m = re.search(r"notification_id\\s*[:=]\\s*BESTAETIGT-(KAFFEE-[A-Za-z0-9_-]{8,100})", combined, re.I)
+        if m:
+            settlement_id = m.group(1).strip()
+    if not settlement_id:
+        return {"uid": str(uid), "settlement_id": "", "name": ""}, "Abrechnungs-ID der Bestätigung fehlt"
+    name = field(body, ["user", "Name", "Teilnehmer", "App-Name"])
+    if not name:
+        m = re.search(r"(?im)\\buser\\b\\s*[:=]\\s*([^\\r\\n<]{1,80})", body)
+        if m:
+            name = m.group(1).strip()
+    name = re.sub(r"\\s+", " ", name).strip()
+    try:
+        confirmed_at = parsedate_to_datetime(msg.get("Date")).astimezone(TZ)
+    except Exception:
+        confirmed_at = datetime.now(TZ)
+    return {
+        "uid": str(uid),
+        "settlement_id": settlement_id,
+        "name": name,
+        "confirmed_at": confirmed_at
+    }, ""
+
 def parse_request(msg, uid):
     subject = decode_header_value(msg.get("Subject", ""))
     body = message_text(msg)
@@ -137,9 +172,41 @@ def main():
             if status != "OK" or not fetched or not isinstance(fetched[0], tuple):
                 raise RuntimeError(f"E-Mail UID {uid} konnte nicht gelesen werden")
             msg = email.message_from_bytes(fetched[0][1])
-            request, reason = parse_request(msg, uid)
+            confirmation, confirmation_reason = parse_confirmation(msg, uid)
             state["last_uid"] = uid
             changed = True
+            if confirmation:
+                settlement = birthday.get("abrechnung") or {}
+                confirmation_key = "CONFIRM:" + confirmation.get("settlement_id", "")
+                if confirmation_key in processed:
+                    print(f"UID {uid}: doppelte Abrechnungsbestätigung ignoriert")
+                    continue
+                if not confirmation.get("settlement_id"):
+                    print(f"UID {uid}: Bestätigung ignoriert ({confirmation_reason})")
+                    continue
+                if settlement.get("id") != confirmation["settlement_id"]:
+                    print(f"UID {uid}: Bestätigung passt nicht zur aktuell offenen Abrechnung")
+                    continue
+                if settlement.get("status") != "offen":
+                    print(f"UID {uid}: Abrechnung ist nicht mehr offen; Bestätigung ignoriert")
+                    continue
+                if confirmation.get("name") and confirmation["name"].casefold() != str(settlement.get("spender", "")).casefold():
+                    print(f"UID {uid}: Name der Bestätigung stimmt nicht mit dem Spender überein")
+                    continue
+                confirmed_at = confirmation["confirmed_at"]
+                settlement.update({
+                    "status": "bestätigt",
+                    "bestaetigtAm": confirmed_at.isoformat(),
+                    "bestaetigtVon": confirmation.get("name") or settlement.get("spender", ""),
+                    "bestaetigungUid": str(uid),
+                    "bestaetigungQuelle": "Kassen-App per EmailJS"
+                })
+                birthday["abrechnung"] = settlement
+                processed.add(confirmation_key)
+                print(f"Abrechnung {settlement['id']} durch App-Bestätigung abgeschlossen.")
+                continue
+
+            request, reason = parse_request(msg, uid)
             if not request:
                 print(f"UID {uid}: ignoriert ({reason})")
                 continue
