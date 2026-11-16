@@ -19,8 +19,8 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "TEST NACHRICHT 123",
-    "typ": "info"
+    "text": "TEST NACHRICHT 456",
+    "typ": "warnung"
   },
   "preise": {
     "btn-kaffee": 0.5,
@@ -50,7 +50,7 @@
     "aktiv": false
   },
   "letzteNachricht": {
-    "text": "Keine neue Meldung",
+    "text": "TEST NACHRICHT 123",
     "typ": "info"
   },
   "sonderartikel": {
