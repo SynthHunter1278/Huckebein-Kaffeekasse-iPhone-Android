@@ -1068,8 +1068,44 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
     }
 
     let instrumentClockTimer = null;
+    let publicConfigRefreshTimer = null;
+    let publicConfigRefreshInProgress = false;
+    let lastPublicConfigRefreshAt = 0;
+
+    // Live-Konfiguration regelmäßig und beim Zurückkehren in die App aktualisieren.
+    async function refreshPublicConfigInBackground() {
+        if (document.visibilityState !== "visible") return;
+        if (localStorage.getItem(ACCESS_STORAGE_KEY) !== "1") return;
+        if (publicConfigRefreshInProgress) return;
+
+        // Focus und visibilitychange können direkt nacheinander ausgelöst werden.
+        if (Date.now() - lastPublicConfigRefreshAt < 10000) return;
+
+        publicConfigRefreshInProgress = true;
+        lastPublicConfigRefreshAt = Date.now();
+        try {
+            await loadPublicConfig();
+        } finally {
+            publicConfigRefreshInProgress = false;
+        }
+    }
+
+    function startPublicConfigAutoRefresh() {
+        if (publicConfigRefreshTimer) return;
+
+        // Alle zwei Minuten aktualisieren, aber nur solange die App sichtbar ist.
+        publicConfigRefreshTimer = setInterval(refreshPublicConfigInBackground, 120000);
+
+        // Beim Wechsel zurück zur App sofort die aktuellen Live-Daten abrufen.
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") refreshPublicConfigInBackground();
+        });
+        window.addEventListener("focus", refreshPublicConfigInBackground);
+    }
+
     async function startApp() {
         updateClockInstruments();
+        startPublicConfigAutoRefresh();
         if (!instrumentClockTimer) instrumentClockTimer = setInterval(updateClockInstruments, 15000);
         if (localStorage.getItem(ACCESS_STORAGE_KEY) === "1") {
             document.getElementById("accessGate").style.display = "none";
