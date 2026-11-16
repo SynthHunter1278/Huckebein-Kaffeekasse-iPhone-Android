@@ -71,26 +71,26 @@ def parse_confirmation(msg, uid):
     """Recognize the app's explicit settlement-confirmation email."""
     subject = decode_header_value(msg.get("Subject", ""))
     body = message_text(msg)
-    combined = subject + "\\n" + body
+    combined = subject + "\n" + body
     normalized = combined.upper().replace("Ä", "AE").replace("Ö", "OE").replace("Ü", "UE")
     if "ABBUCHUNG BESTAETIGT" not in normalized and "ABBUCHUNG BESTÄTIGT" not in combined.upper():
         return None
     settlement_id = ""
-    m = re.search(r"(?:Abrechnungs-ID|settlement_id)\\s*[:=]\\s*(KAFFEE-[A-Za-z0-9_-]{8,100})", combined, re.I)
+    m = re.search(r"(?:Abrechnungs-ID|settlement_id)\s*[:=]\s*(KAFFEE-[A-Za-z0-9_-]{8,100})", combined, re.I)
     if m:
         settlement_id = m.group(1).strip()
     if not settlement_id:
-        m = re.search(r"notification_id\\s*[:=]\\s*BESTAETIGT-(KAFFEE-[A-Za-z0-9_-]{8,100})", combined, re.I)
+        m = re.search(r"notification_id\s*[:=]\s*BESTAETIGT-(KAFFEE-[A-Za-z0-9_-]{8,100})", combined, re.I)
         if m:
             settlement_id = m.group(1).strip()
     if not settlement_id:
         return {"uid": str(uid), "settlement_id": "", "name": ""}, "Abrechnungs-ID der Bestätigung fehlt"
     name = field(body, ["user", "Name", "Teilnehmer", "App-Name"])
     if not name:
-        m = re.search(r"(?im)\\buser\\b\\s*[:=]\\s*([^\\r\\n<]{1,80})", body)
+        m = re.search(r"(?im)\buser\b\s*[:=]\s*([^\r\n<]{1,80})", body)
         if m:
             name = m.group(1).strip()
-    name = re.sub(r"\\s+", " ", name).strip()
+    name = re.sub(r"\s+", " ", name).strip()
     try:
         confirmed_at = parsedate_to_datetime(msg.get("Date")).astimezone(TZ)
     except Exception:
