@@ -47,7 +47,7 @@
     }
   },
   "paypal": {
-    "aktiv": false
+    "aktiv": true
   },
   "letzteNachricht": {
     "text": "Herzlich willkommen neue Tester Röxi und Julian",
