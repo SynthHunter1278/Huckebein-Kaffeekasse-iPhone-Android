@@ -59,6 +59,26 @@ class SponsorMailTests(unittest.TestCase):
         self.assertIsNone(request)
         self.assertEqual(reason, "Keine Spenderanmeldung")
 
+    def test_signup_window_boundaries(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo("Europe/Berlin")
+        now = datetime(2026, 11, 16, 12, 0, 0, tzinfo=tz)
+        cases = [
+            (datetime(2026, 11, 16, 5, 59, 59, tzinfo=tz), False),
+            (datetime(2026, 11, 16, 6, 0, 0, tzinfo=tz), True),
+            (datetime(2026, 11, 16, 14, 59, 59, tzinfo=tz), True),
+            (datetime(2026, 11, 16, 15, 0, 0, tzinfo=tz), False),
+            (datetime(2026, 11, 15, 12, 0, 0, tzinfo=tz), False),
+            (datetime(2026, 11, 17, 12, 0, 0, tzinfo=tz), False),
+        ]
+        for request_time, expected in cases:
+            with self.subTest(request_time=request_time):
+                self.assertEqual(
+                    sponsor_mail.is_signup_time_valid(request_time, now),
+                    expected,
+                )
+
     def test_search_is_limited_to_coffee_kasse_messages(self):
         class FakeMail:
             def __init__(self):
