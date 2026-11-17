@@ -119,7 +119,6 @@
             <button type="button" class="nav-button active" data-admin-page="overview" onclick="showAdminPage('overview')"><span class="nav-icon">⌂</span><span class="nav-copy"><strong>Übersicht</strong><small>Status & Zugang</small></span></button>
             <button type="button" class="nav-button" data-admin-page="sortiment" onclick="showAdminPage('sortiment')"><span class="nav-icon">☕</span><span class="nav-copy"><strong>Sortiment</strong><small>Produkte & Preise</small></span></button>
             <button type="button" class="nav-button" data-admin-page="aufladen" onclick="showAdminPage('aufladen')"><span class="nav-icon">€</span><span class="nav-copy"><strong>Aufladen</strong><small>PayPal-Funktion</small></span></button>
-            <button type="button" class="nav-button" data-admin-page="aktionen" onclick="showAdminPage('aktionen')"><span class="nav-icon">★</span><span class="nav-copy"><strong>Aktionen</strong><small>Kaffee spendieren</small></span></button>
             <button type="button" class="nav-button" data-admin-page="abrechnung" onclick="showAdminPage('abrechnung')"><span class="nav-icon">▤</span><span class="nav-copy"><strong>Abrechnung</strong><small>Abrechnung & Nachrichten</small></span></button>
         </nav>
         <div class="sidebar-foot">Live-Verwaltung über GitHub<br>Änderungen werden gemeinsam veröffentlicht.</div>
@@ -144,7 +143,6 @@
                     <div class="overview-grid">
                         <div class="overview-tile"><strong>☕ Sortiment</strong><span>Verkaufsprodukte ein- oder ausblenden und Preise bearbeiten.</span></div>
                         <div class="overview-tile"><strong>💳 Aufladen</strong><span>Die PayPal-Aufladung für die Kassen-App freigeben oder sperren.</span></div>
-                        <div class="overview-tile"><strong>🎁 Aktionen</strong><span>Eine Kaffeespende mit Spender und Datum einrichten.</span></div>
                         <div class="overview-tile"><strong>🧾 Abrechnung</strong><span>Gezählte Kaffees abrechnen, erneut zustellen und Nutzer informieren.</span></div>
                     </div>
                     <p class="small-note">Wichtig: Der Button „Speichern & Live schalten“ am unteren Rand veröffentlicht die Änderungen aus allen Bereichen gemeinsam in config.json. Du musst dafür nicht zur Übersicht zurückkehren.</p>
@@ -223,29 +221,6 @@
                 </div>
             </section>
 
-            <section class="page-panel" data-admin-panel="aktionen" hidden>
-                <div class="content-card">
-                    <h2>☕ Freikaffee-Aktion</h2>
-        <div class="form-group flex-group">
-            <label class="switch">
-                <input type="checkbox" id="freeCoffeeActive">
-                <span class="slider"></span>
-            </label>
-            <span>Kaffee spendieren aktiv (ein Becher pro Teilnehmer)</span>
-        </div>
-        <div class="form-group">
-            <label for="freeCoffeeGiver">Name des Kaffeespenders:</label>
-            <input type="text" id="freeCoffeeGiver" placeholder="z. B. Pete" autocomplete="off">
-            <p class="small-note">Den Namen exakt so eintragen, wie er in der Spenderanmeldung per E-Mail steht. Nur diese Kassen-App erhält später die persönliche Abrechnung.</p>
-        </div>
-        <div class="form-group">
-            <label for="freeCoffeeDate">Datum:</label>
-            <input type="date" id="freeCoffeeDate">
-        </div>
-        <p class="small-note">Am eingetragenen Tag kann jeder Teilnehmer über seine Kassen-App einmalig einen Becher Automatenkaffee von 06:00 bis 15:00 Uhr kostenlos abrufen. Weitere Kaffees und andere Produkte bleiben kostenpflichtig.</p>
-                </div>
-            </section>
-
             <section class="page-panel" data-admin-panel="abrechnung" hidden>
                 <div class="content-card">
                     <h2>🧾 Kaffee-Spenden-Abrechnung</h2>
@@ -295,7 +270,6 @@
         overview: { title: "Übersicht", description: "Status, Zugang und zentrale Speicherfunktion deiner Kaffeekasse." },
         sortiment: { title: "Sortiment", description: "Produkte sichtbar schalten und Verkaufspreise bearbeiten." },
         aufladen: { title: "Aufladen", description: "Die PayPal-Aufladung in der Kassen-App verwalten." },
-        aktionen: { title: "Aktionen", description: "Kaffee spendieren und Abrechnung verwalten." },
         abrechnung: { title: "Abrechnung & Kommunikation", description: "Kaffeeabrechnungen verwalten und Nachrichten veröffentlichen." }
     };
     function showAdminPage(page) {
@@ -413,11 +387,8 @@
             loadedConfig = config;
 
             const birthdayConfig = config.geburtstag || config.freeCoffee || {};
-            document.getElementById("freeCoffeeActive").checked = Boolean(birthdayConfig.aktiv ?? birthdayConfig.active);
-            document.getElementById("freeCoffeeGiver").value = birthdayConfig.spender || birthdayConfig.giver || "";
-            document.getElementById("freeCoffeeDate").value = birthdayConfig.datum || localDateString();
             const existingSettlement = birthdayConfig.abrechnung || null;
-            document.getElementById("birthdayCoffeeCount").value = existingSettlement && existingSettlement.datum === document.getElementById("freeCoffeeDate").value ? existingSettlement.anzahl : "";
+            document.getElementById("birthdayCoffeeCount").value = existingSettlement ? existingSettlement.anzahl : "";
             updateBirthdaySettlementPreview();
             document.getElementById("msgActive").checked = Boolean(config.nachricht?.aktiv ?? config.message?.active);
             document.getElementById("msgText").value = config.nachricht?.text || config.message?.text || "";
@@ -482,11 +453,6 @@
                     aktiv: specialProductActive,
                     name: specialProductName,
                     preis: Math.round(specialProductPrice * 100) / 100
-                },
-                geburtstag: {
-                    aktiv: document.getElementById("freeCoffeeActive").checked,
-                    spender: document.getElementById("freeCoffeeGiver").value.trim(),
-                    datum: document.getElementById("freeCoffeeDate").value || localDateString()
                 },
                 nachricht: {
                     aktiv: document.getElementById("msgActive").checked,
@@ -565,29 +531,8 @@
                 };
             }
             updatedConfig.letzteNachricht = previousMessage;
-            const latestBirthday = latestConfig.geburtstag || latestConfig.freeCoffee || {};
-            const selectedSpender = String(updatedConfig.geburtstag.spender || "").trim();
-            const selectedDate = updatedConfig.geburtstag.datum;
-            const oldSpender = String(latestBirthday.spender || latestBirthday.giver || "").trim();
-            const oldDate = String(latestBirthday.datum || "");
-            const wasActive = Boolean(latestBirthday.aktiv ?? latestBirthday.active);
-            const isActive = Boolean(updatedConfig.geburtstag.aktiv);
-            const newActionStarted = isActive && !wasActive;
-            const actionIdentityChanged = oldSpender !== selectedSpender || oldDate !== selectedDate;
-            // Eine stabile Aktions-ID ermöglicht die Einmal-Sperre je Benutzer und Aktion.
-            // Sie bleibt bei normalen Preis-/Nachrichtenänderungen erhalten.
-            const existingActionId = String(latestBirthday.aktionsId || latestBirthday.id || "").trim();
-            updatedConfig.geburtstag.aktionsId = (!existingActionId || actionIdentityChanged || newActionStarted)
-                ? `KAFFEE-${String(selectedDate || localDateString()).replace(/-/g, "")}-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
-                : existingActionId;
-            let retainedSettlement = latestBirthday.abrechnung || null;
-            // Eine Abrechnung bleibt nur erhalten, wenn Spender und Datum unverändert sind.
-            if (retainedSettlement && (retainedSettlement.spender !== selectedSpender || retainedSettlement.datum !== selectedDate)) {
-                retainedSettlement = null;
-            }
-            updatedConfig.geburtstag.abrechnung = retainedSettlement;
-            const finalConfig = { ...latestConfig, ...updatedConfig,
-                geburtstag: { ...latestBirthday, ...updatedConfig.geburtstag } };
+            // Die automatisch verwaltete Freikaffee-Aktion bleibt unverändert erhalten.
+            const finalConfig = { ...latestConfig, ...updatedConfig };
             delete finalConfig.geburtstag.archiv;
 
             const contentBase64 = btoa(Array.from(new TextEncoder().encode(JSON.stringify(finalConfig, null, 2)), b => String.fromCharCode(b)).join(""));
@@ -639,8 +584,9 @@
             showStatus("Zuerst müssen die aktuellen Live-Daten erfolgreich geladen sein.", false);
             return;
         }
-        const spender = document.getElementById("freeCoffeeGiver").value.trim();
-        const eventDate = document.getElementById("freeCoffeeDate").value;
+        const currentBirthday = loadedConfig?.geburtstag || loadedConfig?.freeCoffee || {};
+        const spender = String(currentBirthday.spender || currentBirthday.giver || "").trim();
+        const eventDate = String(currentBirthday.datum || "");
         const countRaw = document.getElementById("birthdayCoffeeCount").value;
         const count = Number(countRaw);
         const unitPrice = Number(document.getElementById("p_kaffee").value);
@@ -703,7 +649,6 @@
             const result = await readApiJson(response);
             currentSha = result.content?.sha || current.sha;
             loadedConfig = finalConfig;
-            document.getElementById("freeCoffeeActive").checked = false;
             showStatus(`Abrechnung ${settlementId} veröffentlicht: ${count} Kaffees = ${total.toFixed(2).replace(".", ",")} €. Der Spender sieht sie beim nächsten Neuladen.`, true);
         } catch (e) {
             showStatus("Abrechnung konnte nicht veröffentlicht werden: " + e.message, false);
