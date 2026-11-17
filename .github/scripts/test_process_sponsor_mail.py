@@ -53,6 +53,17 @@ class SponsorMailTests(unittest.TestCase):
         )
         self.assertEqual(confirmation["name"], "Testperson")
 
+    def test_friday_breakfast_booking(self):
+        msg = make_mail(
+            "KAFFEEKASSE – FRÜHSTÜCKSBUCHUNG",
+            "item: Freitagsfrühstück\\nuser: Testperson\\ntimestamp: 16.11.2026, 12:00:00\\nnotification_id: BREAKFAST-123",
+        )
+        entry, reason = sponsor_mail.parse_breakfast_booking(msg, 301)
+        self.assertEqual(reason, "")
+        self.assertEqual(entry["name"], "Testperson")
+        self.assertEqual(entry["item"], "Freitagsfrühstück")
+        self.assertEqual(entry["notification_id"], "BREAKFAST-123")
+
     def test_unrelated_mail_is_ignored(self):
         msg = make_mail("Private Nachricht", "Keine Anmeldung")
         request, reason = sponsor_mail.parse_request(msg, 103)
