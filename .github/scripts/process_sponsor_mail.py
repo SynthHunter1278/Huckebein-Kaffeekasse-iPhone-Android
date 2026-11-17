@@ -75,7 +75,7 @@ def parse_confirmation(msg, uid):
     combined = subject + "\n" + body
     normalized = combined.upper().replace("Ä", "AE").replace("Ö", "OE").replace("Ü", "UE")
     if "ABBUCHUNG BESTAETIGT" not in normalized and "ABBUCHUNG BESTÄTIGT" not in combined.upper():
-        return None
+        return None, "Keine Abrechnungsbestätigung"
     settlement_id = ""
     m = re.search(r"(?:Abrechnungs-ID|settlement_id)\s*[:=]\s*(KAFFEE-[A-Za-z0-9_-]{8,100})", combined, re.I)
     if m:
