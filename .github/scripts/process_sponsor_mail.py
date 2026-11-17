@@ -123,11 +123,11 @@ def parse_paypal_decision(msg, uid):
         return None, "PayPal-Zahlungsstatus fehlt"
 
     name = re.sub(
-        r"\\s*[–-]\\s*ZAHLUNG VOM TEILNEHMER ALS (?:NICHT )?BEZAHLT BESTÄTIGT\\s*$",
+        r"\s*[–-]\s*ZAHLUNG VOM TEILNEHMER ALS (?:NICHT )?BEZAHLT BESTÄTIGT\s*$",
         "", user_value, flags=re.I
     ).strip()
     amount_raw = field(body, ["amount", "Betrag"])
-    amount_match = re.search(r"(\\d+(?:[.,]\\d{1,2})?)", amount_raw)
+    amount_match = re.search(r"(\d+(?:[.,]\d{1,2})?)", amount_raw)
     if not amount_match:
         return None, "PayPal-Betrag fehlt"
     try:
