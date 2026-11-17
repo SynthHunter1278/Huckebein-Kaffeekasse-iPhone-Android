@@ -1,8 +1,8 @@
 {
   "geburtstag": {
-    "aktiv": false,
-    "spender": "Julian",
-    "datum": "2026-11-16",
+    "aktiv": true,
+    "spender": "Uwe",
+    "datum": "2026-11-17",
     "abrechnung": {
       "id": "KAFFEE-20261116-1794840389876",
       "spender": "Julian",
@@ -15,7 +15,10 @@
       "erneutVeröffentlicht": "2026-11-16T17:34:35.890Z",
       "erneutVeröffentlichtAnzahl": 1
     },
-    "aktionsId": "KAFFEE-20261116-1794828374170-P09DY"
+    "aktionsId": "KAFFEE-20261117-182515-6-B18U14",
+    "sperreBis": "2026-11-18T06:00:00+01:00",
+    "freigabeZeitpunkt": "2026-11-17T18:25:15+01:00",
+    "automatischFreigegeben": true
   },
   "nachricht": {
     "aktiv": true,
