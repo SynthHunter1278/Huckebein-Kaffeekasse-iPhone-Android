@@ -1722,10 +1722,6 @@ function getCalendarWeek(date) {
     async function requestBirthdaySponsor() {
         const button = document.getElementById("birthdaySponsorButton");
         const status = document.getElementById("birthdaySponsorStatus");
-        if (!isBirthdaySponsorRequestWindowNow()) {
-            showStatus("Spenderanmeldungen sind nur zwischen 06:00 und 15:00 Uhr möglich.", false);
-            return;
-        }
         button.disabled = true;
         button.textContent = "⏳ Prüfe aktuelle Aktion...";
         // Vor dem Versand immer den zentralen Status laden. Bei fehlender Verbindung sicherheitshalber abbrechen.
