@@ -19,7 +19,7 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "0000000000000000000",
+    "text": "Heute nur Admin Testbetrieb",
     "typ": "warnung"
   },
   "preise": {
@@ -50,7 +50,7 @@
     "aktiv": false
   },
   "letzteNachricht": {
-    "text": "11111111111111",
+    "text": "0000000000000000000",
     "typ": "warnung"
   },
   "sonderartikel": {
