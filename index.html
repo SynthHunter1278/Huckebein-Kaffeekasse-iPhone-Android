@@ -1073,6 +1073,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
 
     let instrumentClockTimer = null;
     let publicConfigRefreshTimer = null;
+    let publicConfigFastRefreshStopTimer = null;
     let publicConfigRefreshInProgress = false;
     let lastPublicConfigRefreshAt = 0;
 
@@ -1083,7 +1084,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         if (publicConfigRefreshInProgress) return;
 
         // Focus und visibilitychange können direkt nacheinander ausgelöst werden.
-        if (Date.now() - lastPublicConfigRefreshAt < 10000) return;
+        if (Date.now() - lastPublicConfigRefreshAt < 9000) return;
 
         publicConfigRefreshInProgress = true;
         lastPublicConfigRefreshAt = Date.now();
@@ -1097,8 +1098,14 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
     function startPublicConfigAutoRefresh() {
         if (publicConfigRefreshTimer) return;
 
-        // Alle zwei Minuten aktualisieren, aber nur solange die App sichtbar ist.
-        publicConfigRefreshTimer = setInterval(refreshPublicConfigInBackground, 120000);
+        // Direkt nach dem Start zwei Minuten lang alle 10 Sekunden nach
+        // einer inzwischen veröffentlichten GitHub-Pages-Konfiguration suchen.
+        publicConfigRefreshTimer = setInterval(refreshPublicConfigInBackground, 10000);
+        publicConfigFastRefreshStopTimer = setTimeout(() => {
+            if (publicConfigRefreshTimer) clearInterval(publicConfigRefreshTimer);
+            publicConfigRefreshTimer = setInterval(refreshPublicConfigInBackground, 120000);
+            publicConfigFastRefreshStopTimer = null;
+        }, 120000);
 
         // Beim Wechsel zurück zur App sofort die aktuellen Live-Daten abrufen.
         document.addEventListener("visibilitychange", () => {
