@@ -636,7 +636,6 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         <div id="noticeBanner" class="notice-banner" role="status" aria-live="polite">
           <span class="notice-heading">📢 Aktuelle Nachricht</span>
           <div id="noticeText"></div>
-          <div id="noticeDiagTime" style="margin-top:7px;color:#a9c3d5;font-size:10px;font-weight:400;letter-spacing:.02em;">Diagnosezeit: noch nicht aktualisiert</div>
         </div>
         <div id="noNoticeHint" style="color:#a9c3d5;font-size:12px;line-height:1.4;">Zurzeit liegen keine aktuellen Meldungen vor.</div>
       </div>
@@ -1062,9 +1061,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
             document.getElementById("accessGate").style.display = "none";
             const configStarted = performance.now();
             await loadPublicConfig();
-            diagLog("Start-Konfiguration abgeschlossen nach " + Math.round(performance.now() - configStarted) + " ms");
             init();
-            diagLog("init() abgeschlossen");
             triggerBirthdayAttention();
         } catch (e) {
             error.textContent = e.message || "Freischaltung nicht möglich.";
@@ -1114,45 +1111,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         window.addEventListener("focus", refreshPublicConfigInBackground);
     }
 
-    // Vorübergehende Diagnose der Ladezeiten (wird nach der Fehlersuche wieder entfernt).
-    let diagLoadSequence = 0;
-    function diagLog(message) {
-        const panel = document.getElementById("diagnosticLog");
-        if (!panel) return;
-        const elapsed = Math.round(performance.now());
-        const line = "+" + elapsed + " ms | " + message;
-        const entry = document.createElement("div");
-        entry.textContent = line;
-        panel.appendChild(entry);
-        while (panel.children.length > 18) panel.removeChild(panel.firstChild);
-        panel.scrollTop = panel.scrollHeight;
-        console.info("[Kaffeekasse-Diagnose]", line);
-    }
-
-    // Prüft, wann der Browser die bereits eingesetzte Meldung tatsächlich rendern kann.
-    function diagCheckNoticePaint(loadId) {
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-            const banner = document.getElementById("noticeBanner");
-            const text = document.getElementById("noticeText");
-            if (!banner || !text) return;
-            const style = getComputedStyle(banner);
-            const rect = banner.getBoundingClientRect();
-            diagLog("Renderprüfung Abruf #" + loadId + ": display=" + style.display +
-                ", visibility=" + style.visibility + ", Höhe=" + Math.round(rect.height) +
-                "px, Textlänge=" + text.textContent.length +
-                ", Sichtbarkeit=" + document.visibilityState);
-        }));
-    }
-
     async function startApp() {
-        diagLog("startApp beginnt; Seite seit " + Math.round(performance.now()) + " ms geladen");
-        let diagHeartbeatAt = performance.now();
-        setInterval(() => {
-            const now = performance.now();
-            const delay = now - diagHeartbeatAt;
-            if (delay > 1800) diagLog("Hauptthread war " + Math.round(delay) + " ms blockiert/angehalten");
-            diagHeartbeatAt = now;
-        }, 1000);
         updateClockInstruments();
         startPublicConfigAutoRefresh();
         if (!instrumentClockTimer) instrumentClockTimer = setInterval(updateClockInstruments, 15000);
@@ -1160,9 +1119,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
             document.getElementById("accessGate").style.display = "none";
             const configStarted = performance.now();
             await loadPublicConfig();
-            diagLog("Start-Konfiguration abgeschlossen nach " + Math.round(performance.now() - configStarted) + " ms");
             init();
-            diagLog("init() abgeschlossen");
             triggerBirthdayAttention();
         } else {
             document.getElementById("accessCodeInput").focus();
@@ -1170,9 +1127,6 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
     }
 
     async function loadPublicConfig() {
-        const diagLoadId = ++diagLoadSequence;
-        const diagLoadStarted = performance.now();
-        diagLog("Abruf #" + diagLoadId + " gestartet");
         try {
             // Konfiguration zuerst direkt aus dem GitHub-Repository laden.
             // Dadurch muss nicht auf den GitHub-Pages-Build gewartet werden.
@@ -1187,7 +1141,6 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
             for (const configUrl of configUrls) {
                 const sourceStarted = performance.now();
                 const sourceName = configUrl.includes("raw.githubusercontent.com") ? "GitHub Raw" : "GitHub Pages";
-                diagLog("Abruf #" + diagLoadId + ": " + sourceName + " angefragt");
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000);
                 try {
@@ -1200,13 +1153,10 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
                         headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" }
                     });
                     if (!response.ok) throw new Error("HTTP " + response.status);
-                    diagLog("Abruf #" + diagLoadId + ": " + sourceName + " HTTP " + response.status + " nach " + Math.round(performance.now() - sourceStarted) + " ms");
                     config = await response.json();
-                    diagLog("Abruf #" + diagLoadId + ": JSON eingelesen nach insgesamt " + Math.round(performance.now() - sourceStarted) + " ms");
                     break;
                 } catch (fetchError) {
                     lastConfigError = fetchError;
-                    diagLog("Abruf #" + diagLoadId + ": " + sourceName + " FEHLER nach " + Math.round(performance.now() - sourceStarted) + " ms (" + (fetchError.name || "Fehler") + ")");
                     console.warn("Konfigurationsquelle nicht erreichbar oder Zeitüberschreitung:", configUrl, fetchError);
                 } finally {
                     clearTimeout(timeoutId);
@@ -1299,12 +1249,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
                 }
 
                 messageText.textContent = currentNotice.text;
-                const noticeDiagTime = document.getElementById("noticeDiagTime");
-                const noticeInsertedAt = new Date();
-                if (noticeDiagTime) noticeDiagTime.textContent = "Diagnose: Meldung eingesetzt um " + noticeInsertedAt.toLocaleTimeString("de-DE");
                 banner.style.display = "block";
-                diagLog("Abruf #" + diagLoadId + ": Meldung im DOM eingesetzt um " + noticeInsertedAt.toLocaleTimeString("de-DE"));
-                diagCheckNoticePaint(diagLoadId);
                 const isWarning = currentNotice.typ === "warnung";
                 banner.style.background = isWarning ? "#3d2028" : "#102b43";
                 banner.style.color = isWarning ? "#ffd7dc" : "#edf7ff";
@@ -1330,10 +1275,8 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
             if (sub && benutzerName !== "Unbekannter Teilnehmer") {
                 sub.textContent = "Einsatzbereit - Kasse von " + benutzerName;
             }
-            diagLog("Abruf #" + diagLoadId + " vollständig verarbeitet in " + Math.round(performance.now() - diagLoadStarted) + " ms");
             return true;
         } catch (e) {
-            diagLog("Abruf #" + diagLoadId + " abgebrochen/fehlgeschlagen nach " + Math.round(performance.now() - diagLoadStarted) + " ms");
             console.warn("Konfiguration konnte nicht geladen werden; bisherige Preise bleiben erhalten:", e);
             return false;
         } finally {
@@ -2065,11 +2008,5 @@ function executePaypalDeposit(betrag) {
     checkFruehstueckDeadline();
 </script>
 
-<div id="diagnosticPanel" style="position:fixed;right:6px;bottom:6px;width:min(310px,calc(100vw - 24px));max-height:32vh;z-index:99999;background:#101820;color:#eaf3fa;border:1px solid #579dcc;border-radius:8px;padding:6px;font:11px/1.35 monospace;box-shadow:0 2px 12px #0008;">
-  <details open>
-    <summary style="cursor:pointer;font-weight:bold;">Ladezeit-Diagnose (vorübergehend)</summary>
-    <div id="diagnosticLog" style="overflow:auto;max-height:25vh;margin-top:5px;"></div>
-  </details>
-</div>
 </body>
 </html>
