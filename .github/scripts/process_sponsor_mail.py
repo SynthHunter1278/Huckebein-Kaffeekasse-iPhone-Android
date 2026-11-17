@@ -73,12 +73,12 @@ def parse_breakfast_booking(msg, uid):
     body = message_text(msg)
     subject = decode_header_value(msg.get("Subject", ""))
     item = field(body, ["item", "Artikel", "Produkt"])
-    normalized = (subject + "\\n" + item).upper().replace("Ü", "UE")
+    normalized = (subject + "\n" + item).upper().replace("Ü", "UE")
     if "FRUEHSTUECKSBUCHUNG" not in normalized and "FREITAGSFRUEHSTUECK" not in normalized:
         return None, "Keine Frühstücksbuchung"
 
     name = field(body, ["user", "Name", "Teilnehmer", "App-Name"])
-    name = re.sub(r"\\s+", " ", name).strip()
+    name = re.sub(r"\s+", " ", name).strip()
     if not name or name.lower() in ("anonymer teilnehmer", "unbekannter teilnehmer"):
         return None, "Teilnehmername fehlt"
 
