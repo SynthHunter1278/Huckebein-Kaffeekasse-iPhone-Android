@@ -67,9 +67,9 @@ class SponsorMailTests(unittest.TestCase):
     def test_paypal_paid_decision(self):
         msg = make_mail(
             "KAFFEEKASSE - PAYPAL-AUFLADUNG",
-            "user: Testperson – ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT\\n"
-            "amount: 10,00 €\\ntimestamp: 16.11.2026, 12:00:00\\n"
-            "status: BEZAHLT\\nrequest_id: PP-123456",
+            "user: Testperson – ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT\n"
+            "amount: 10,00 €\ntimestamp: 16.11.2026, 12:00:00\n"
+            "status: BEZAHLT\nrequest_id: PP-123456",
         )
         entry, reason = sponsor_mail.parse_paypal_decision(msg, 401)
         self.assertEqual(reason, "")
@@ -80,8 +80,8 @@ class SponsorMailTests(unittest.TestCase):
     def test_paypal_not_paid_decision(self):
         msg = make_mail(
             "KAFFEEKASSE - PAYPAL-AUFLADUNG",
-            "user: Testperson – ZAHLUNG VOM TEILNEHMER ALS NICHT BEZAHLT BESTÄTIGT\\n"
-            "amount: 5,00 €\\ntimestamp: 16.11.2026, 12:00:00",
+            "user: Testperson – ZAHLUNG VOM TEILNEHMER ALS NICHT BEZAHLT BESTÄTIGT\n"
+            "amount: 5,00 €\ntimestamp: 16.11.2026, 12:00:00",
         )
         entry, reason = sponsor_mail.parse_paypal_decision(msg, 402)
         self.assertEqual(reason, "")
