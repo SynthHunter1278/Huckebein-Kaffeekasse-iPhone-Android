@@ -119,7 +119,8 @@
             <button type="button" class="nav-button active" data-admin-page="overview" onclick="showAdminPage('overview')"><span class="nav-icon">⌂</span><span class="nav-copy"><strong>Übersicht</strong><small>Status & Zugang</small></span></button>
             <button type="button" class="nav-button" data-admin-page="sortiment" onclick="showAdminPage('sortiment')"><span class="nav-icon">☕</span><span class="nav-copy"><strong>Sortiment</strong><small>Produkte & Preise</small></span></button>
             <button type="button" class="nav-button" data-admin-page="aufladen" onclick="showAdminPage('aufladen')"><span class="nav-icon">€</span><span class="nav-copy"><strong>Aufladen</strong><small>PayPal-Funktion</small></span></button>
-            <button type="button" class="nav-button" data-admin-page="abrechnung" onclick="showAdminPage('abrechnung')"><span class="nav-icon">▤</span><span class="nav-copy"><strong>Abrechnung</strong><small>Abrechnung & Nachrichten</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="abrechnung" onclick="showAdminPage('abrechnung')"><span class="nav-icon">▤</span><span class="nav-copy"><strong>Abrechnung</strong><small>Kaffee-Spenden</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="nachricht" onclick="showAdminPage('nachricht')"><span class="nav-icon">📢</span><span class="nav-copy"><strong>Nachricht an alle</strong><small>Mitteilung veröffentlichen</small></span></button>
         </nav>
         <div class="sidebar-foot">Live-Verwaltung über GitHub<br>Änderungen werden gemeinsam veröffentlicht.</div>
     </aside>
@@ -143,7 +144,8 @@
                     <div class="overview-grid">
                         <div class="overview-tile"><strong>☕ Sortiment</strong><span>Verkaufsprodukte ein- oder ausblenden und Preise bearbeiten.</span></div>
                         <div class="overview-tile"><strong>💳 Aufladen</strong><span>Die PayPal-Aufladung für die Kassen-App freigeben oder sperren.</span></div>
-                        <div class="overview-tile"><strong>🧾 Abrechnung</strong><span>Gezählte Kaffees abrechnen, erneut zustellen und Nutzer informieren.</span></div>
+                        <div class="overview-tile"><strong>🧾 Abrechnung</strong><span>Gezählte Kaffees abrechnen und erneut zustellen.</span></div>
+                        <div class="overview-tile"><strong>📢 Nachricht an alle</strong><span>Eine Mitteilung oder Warnung für alle Teilnehmer veröffentlichen.</span></div>
                     </div>
                     <p class="small-note">Wichtig: Der Button „Speichern & Live schalten“ am unteren Rand veröffentlicht die Änderungen aus allen Bereichen gemeinsam in config.json. Du musst dafür nicht zur Übersicht zurückkehren.</p>
                 </div>
@@ -234,26 +236,30 @@
         <p class="small-note">„Erneut zustellen“ veröffentlicht dieselbe offene Abrechnung mit derselben Abrechnungs-ID erneut. Dadurch wird sie auf dem Spendergerät erneut abgefragt, ohne auf demselben Gerät ein zweites Mal abzubuchen.</p>
         <p class="small-note">Die Admin-App berechnet den Betrag aus Anzahl × normalem Kaffeepreis und veröffentlicht ihn in config.json. Der Spender bestätigt die Abbuchung in seiner eigenen Kassen-App.</p>
                 </div>
+            </section>
+
+            <section class="page-panel" data-admin-panel="nachricht" hidden>
                 <div class="content-card">
                     <h2>📢 Nachricht an alle</h2>
-        <div class="form-group flex-group">
-            <label class="switch">
-                <input type="checkbox" id="msgActive">
-                <span class="slider"></span>
-            </label>
-            <span>Nachricht einblenden</span>
-        </div>
-        <div class="form-group">
-            <label for="msgText">Nachrichten-Text:</label>
-            <input type="text" id="msgText" placeholder="z. B. Bitte Kaffeemaschine reinigen!">
-        </div>
-        <div class="form-group">
-            <label for="msgColor">Banner-Farbe:</label>
-            <select id="msgColor">
-                <option value="blue">Info-Blau</option>
-                <option value="red">Warnung-Rot</option>
-            </select>
-        </div>
+                    <p class="small-note">Hier kannst du eine Mitteilung oder Warnung veröffentlichen, die allen Teilnehmern in der Kassen-App angezeigt wird.</p>
+                    <div class="form-group flex-group">
+                        <label class="switch">
+                            <input type="checkbox" id="msgActive">
+                            <span class="slider"></span>
+                        </label>
+                        <span>Nachricht einblenden</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="msgText">Nachrichten-Text:</label>
+                        <input type="text" id="msgText" placeholder="z. B. Bitte Kaffeemaschine reinigen!">
+                    </div>
+                    <div class="form-group">
+                        <label for="msgColor">Banner-Farbe:</label>
+                        <select id="msgColor">
+                            <option value="blue">Info-Blau</option>
+                            <option value="red">Warnung-Rot</option>
+                        </select>
+                    </div>
                 </div>
             </section>
 
@@ -270,7 +276,8 @@
         overview: { title: "Übersicht", description: "Status, Zugang und zentrale Speicherfunktion deiner Kaffeekasse." },
         sortiment: { title: "Sortiment", description: "Produkte sichtbar schalten und Verkaufspreise bearbeiten." },
         aufladen: { title: "Aufladen", description: "Die PayPal-Aufladung in der Kassen-App verwalten." },
-        abrechnung: { title: "Abrechnung & Kommunikation", description: "Kaffeeabrechnungen verwalten und Nachrichten veröffentlichen." }
+        abrechnung: { title: "Abrechnung", description: "Kaffee-Spenden-Abrechnungen verwalten und erneut zustellen." },
+        nachricht: { title: "Nachricht an alle", description: "Mitteilungen und Warnungen für alle Teilnehmer veröffentlichen." }
     };
     function showAdminPage(page) {
         if (!adminPageInfo[page]) return;
