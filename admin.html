@@ -121,6 +121,8 @@
             <button type="button" class="nav-button" data-admin-page="aufladen" onclick="showAdminPage('aufladen')"><span class="nav-icon">€</span><span class="nav-copy"><strong>Aufladen</strong><small>PayPal-Funktion</small></span></button>
             <button type="button" class="nav-button" data-admin-page="abrechnung" onclick="showAdminPage('abrechnung')"><span class="nav-icon">▤</span><span class="nav-copy"><strong>Abrechnung</strong><small>Kaffee-Spenden</small></span></button>
             <button type="button" class="nav-button" data-admin-page="nachricht" onclick="showAdminPage('nachricht')"><span class="nav-icon">📢</span><span class="nav-copy"><strong>Nachricht an alle</strong><small>Mitteilung veröffentlichen</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="paypalprotokoll" onclick="showAdminPage('paypalprotokoll')"><span class="nav-icon">💳</span><span class="nav-copy"><strong>PayPal-Protokoll</strong><small>Aufladungen & Status</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="fruehstueck" onclick="showAdminPage('fruehstueck')"><span class="nav-icon">🍳</span><span class="nav-copy"><strong>Frühstück</strong><small>Buchungsübersicht</small></span></button>
         </nav>
         <div class="sidebar-foot">Live-Verwaltung über GitHub<br>Änderungen werden gemeinsam veröffentlicht.</div>
     </aside>
@@ -263,6 +265,24 @@
                 </div>
             </section>
 
+            <section class="page-panel" data-admin-panel="paypalprotokoll" hidden>
+                <div class="content-card">
+                    <h2>💳 PayPal-Aufladeprotokoll</h2>
+                    <p class="small-note">Zentrale Liste der per E-Mail gemeldeten Teilnehmerbestätigungen.</p>
+                    <button type="button" class="btn-resend" onclick="loadPaypalLog()">↻ Protokoll aktualisieren</button>
+                    <div id="paypalLogSummary" class="settlement-preview">Noch nicht geladen.</div>
+                    <div id="paypalLogTable" style="overflow-x:auto;"></div>
+                </div>
+            </section>
+            <section class="page-panel" data-admin-panel="fruehstueck" hidden>
+                <div class="content-card">
+                    <h2>🍳 Freitagsfrühstück – Buchungen</h2>
+                    <p class="small-note">Hier erscheinen die erfolgreich per E-Mail gemeldeten Frühstücksbuchungen. Die Liste wird zentral im Repository gespeichert.</p>
+                    <button type="button" class="btn-resend" onclick="loadBreakfastLog()">↻ Buchungen aktualisieren</button>
+                    <div id="breakfastLogSummary" class="settlement-preview">Noch nicht geladen.</div>
+                    <div id="breakfastLogTable" style="overflow-x:auto;"></div>
+                </div>
+            </section>
             <div class="global-actions">
                 <button class="btn-save" onclick="saveAndPushConfig()" disabled>⏳ Live-Daten werden geladen...</button>
             </div>
@@ -277,7 +297,9 @@
         sortiment: { title: "Sortiment", description: "Produkte sichtbar schalten und Verkaufspreise bearbeiten." },
         aufladen: { title: "Aufladen", description: "Die PayPal-Aufladung in der Kassen-App verwalten." },
         abrechnung: { title: "Abrechnung", description: "Kaffee-Spenden-Abrechnungen verwalten und erneut zustellen." },
-        nachricht: { title: "Nachricht an alle", description: "Mitteilungen und Warnungen für alle Teilnehmer veröffentlichen." }
+        nachricht: { title: "Nachricht an alle", description: "Mitteilungen und Warnungen für alle Teilnehmer veröffentlichen." },
+        paypalprotokoll: { title: "PayPal-Protokoll", description: "Zentrale Übersicht der gemeldeten PayPal-Aufladungen." },
+        fruehstueck: { title: "Frühstück", description: "Übersicht der eingegangenen Freitagsfrühstück-Buchungen." }
     };
     function showAdminPage(page) {
         if (!adminPageInfo[page]) return;
@@ -426,12 +448,90 @@
             saveButton.disabled = false;
             saveButton.textContent = "💾 Speichern & Live schalten";
             showStatus("Live-Daten erfolgreich geladen.", true);
+            loadPaypalLog();
+            loadBreakfastLog();
         } catch (e) {
             configLoaded = false;
             const saveButton = document.querySelector(".btn-save");
             saveButton.disabled = true;
             saveButton.textContent = "⏳ Erst Live-Daten laden";
             showStatus("Laden fehlgeschlagen: " + e.message + " Bitte Admin-Seite neu laden und Token/Berechtigung prüfen.", false);
+        }
+    }
+
+    async function loadRepositoryJson(path) {
+        if (!checkCredentials()) throw new Error("GitHub-Zugang fehlt.");
+        const url = `https://api.github.com/repos/${githubUser}/${githubRepo}/contents/${path}?cb=${Date.now()}`;
+        const response = await fetchGetWithRetry(url, {
+            method: "GET",
+            headers: githubHeaders(),
+            cache: "no-store"
+        }, 3);
+        const data = await readApiJson(response);
+        if (!data.content) throw new Error(path + " enthält keine Daten.");
+        return JSON.parse(decodeBase64Utf8(data.content));
+    }
+
+    function escapeLogText(value) {
+        return String(value ?? "").replace(/[&<>"']/g, ch => ({
+            "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+        })[ch]);
+    }
+
+    function renderLogTable(entries, targetId, emptyText, type) {
+        const target = document.getElementById(targetId);
+        const sorted = [...entries].sort((x,y) => String(y.created_at || "").localeCompare(String(x.created_at || "")));
+        if (!sorted.length) {
+            target.innerHTML = '<p class="small-note">' + emptyText + '</p>';
+            return;
+        }
+        const rows = sorted.map(entry => {
+            const date = new Date(entry.created_at);
+            const dateText = Number.isNaN(date.getTime()) ? entry.created_at : date.toLocaleString("de-DE");
+            if (type === "paypal") {
+                const status = String(entry.status || "");
+                const statusColor = status === "BEZAHLT" ? "#86efac" : "#fca5a5";
+                return '<tr><td>' + escapeLogText(dateText) + '</td><td>' + escapeLogText(entry.name) +
+                    '</td><td>' + escapeLogText(Number(entry.amount).toFixed(2).replace(".", ",")) + ' €</td><td style="color:' + statusColor + ';font-weight:bold;">' +
+                    escapeLogText(status) + '</td></tr>';
+            }
+            return '<tr><td>' + escapeLogText(dateText) + '</td><td>' + escapeLogText(entry.name) +
+                '</td><td>' + escapeLogText(entry.item || "Freitagsfrühstück") + '</td></tr>';
+        }).join("");
+        const headers = type === "paypal" ? "<th>Datum / Uhrzeit</th><th>Teilnehmer</th><th>Betrag</th><th>Status</th>" :
+            "<th>Datum / Uhrzeit</th><th>Teilnehmer</th><th>Buchung</th>";
+        target.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;text-align:left;"><thead><tr>' +
+            headers + '</tr></thead><tbody>' + rows + '</tbody></table>';
+        target.querySelectorAll("th,td").forEach(cell => {
+            cell.style.padding = "10px 8px";
+            cell.style.borderBottom = "1px solid #40516a";
+            cell.style.whiteSpace = "nowrap";
+        });
+    }
+
+    async function loadBreakfastLog() {
+        const summary = document.getElementById("breakfastLogSummary");
+        summary.textContent = "Lade Frühstücksbuchungen...";
+        try {
+            const data = await loadRepositoryJson("breakfast-log.json");
+            const entries = Array.isArray(data.entries) ? data.entries : [];
+            summary.textContent = entries.length + " Frühstücksbuchung(en) insgesamt.";
+            renderLogTable(entries, "breakfastLogTable", "Noch keine Frühstücksbuchungen vorhanden.", "breakfast");
+        } catch (error) {
+            summary.textContent = "Frühstücksprotokoll konnte nicht geladen werden: " + error.message;
+        }
+    }
+
+    async function loadPaypalLog() {
+        const summary = document.getElementById("paypalLogSummary");
+        summary.textContent = "Lade PayPal-Aufladungen...";
+        try {
+            const data = await loadRepositoryJson("paypal-log.json");
+            const entries = Array.isArray(data.entries) ? data.entries : [];
+            summary.textContent = entries.length + " PayPal-Aufladung(en) insgesamt.";
+            renderLogTable(entries, "paypalLogTable", "Noch keine PayPal-Aufladungen vorhanden.", "paypal");
+        } catch (error) {
+            summary.textContent = "PayPal-Protokoll konnte nicht geladen werden: " + error.message;
         }
     }
 
