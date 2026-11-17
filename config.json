@@ -19,7 +19,7 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "Heute nur Admin Testbetrieb",
+    "text": "Heute kein Kassenbetrieb",
     "typ": "warnung"
   },
   "preise": {
@@ -50,7 +50,7 @@
     "aktiv": false
   },
   "letzteNachricht": {
-    "text": "0000000000000000000",
+    "text": "Heute nur Admin Testbetrieb",
     "typ": "warnung"
   },
   "sonderartikel": {
