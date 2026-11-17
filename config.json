@@ -19,8 +19,8 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "testlauf 1",
-    "typ": "warnung"
+    "text": "testlauf 2",
+    "typ": "info"
   },
   "preise": {
     "btn-kaffee": 0.5,
@@ -50,7 +50,7 @@
     "aktiv": false
   },
   "letzteNachricht": {
-    "text": "Heute kein Kassenbetrieb",
+    "text": "testlauf 1",
     "typ": "warnung"
   },
   "sonderartikel": {
