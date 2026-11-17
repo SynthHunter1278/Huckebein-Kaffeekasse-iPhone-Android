@@ -64,6 +64,30 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(entry["item"], "Freitagsfrühstück")
         self.assertEqual(entry["notification_id"], "BREAKFAST-123")
 
+    def test_paypal_paid_decision(self):
+        msg = make_mail(
+            "KAFFEEKASSE - PAYPAL-AUFLADUNG",
+            "user: Testperson – ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT\\n"
+            "amount: 10,00 €\\ntimestamp: 16.11.2026, 12:00:00\\n"
+            "status: BEZAHLT\\nrequest_id: PP-123456",
+        )
+        entry, reason = sponsor_mail.parse_paypal_decision(msg, 401)
+        self.assertEqual(reason, "")
+        self.assertEqual(entry["name"], "Testperson")
+        self.assertEqual(entry["amount"], 10.0)
+        self.assertEqual(entry["status"], "BEZAHLT")
+
+    def test_paypal_not_paid_decision(self):
+        msg = make_mail(
+            "KAFFEEKASSE - PAYPAL-AUFLADUNG",
+            "user: Testperson – ZAHLUNG VOM TEILNEHMER ALS NICHT BEZAHLT BESTÄTIGT\\n"
+            "amount: 5,00 €\\ntimestamp: 16.11.2026, 12:00:00",
+        )
+        entry, reason = sponsor_mail.parse_paypal_decision(msg, 402)
+        self.assertEqual(reason, "")
+        self.assertEqual(entry["status"], "NICHT BEZAHLT")
+        self.assertEqual(entry["amount"], 5.0)
+
     def test_unrelated_mail_is_ignored(self):
         msg = make_mail("Private Nachricht", "Keine Anmeldung")
         request, reason = sponsor_mail.parse_request(msg, 103)
