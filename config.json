@@ -20,8 +20,8 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "testlauf 2nm,nn,n,n,n,n,",
-    "typ": "warnung"
+    "text": "Info zur App: Es wurden diverse Verbesserungen in der Datenverarbeitung durchgeführt",
+    "typ": "info"
   },
   "preise": {
     "btn-kaffee": 0.5,
@@ -51,8 +51,8 @@
     "aktiv": false
   },
   "letzteNachricht": {
-    "text": "testlauf 2",
-    "typ": "info"
+    "text": "testlauf 2nm,nn,n,n,n,n,",
+    "typ": "warnung"
   },
   "sonderartikel": {
     "aktiv": false,
