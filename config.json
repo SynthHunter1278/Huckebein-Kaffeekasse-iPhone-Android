@@ -20,7 +20,7 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "Info zur App: Es wurden diverse Verbesserungen in der Datenverarbeitung durchgeführt",
+    "text": "Neue Tester: Anna und Marcus",
     "typ": "info"
   },
   "preise": {
@@ -51,8 +51,8 @@
     "aktiv": false
   },
   "letzteNachricht": {
-    "text": "testlauf 2nm,nn,n,n,n,n,",
-    "typ": "warnung"
+    "text": "Info zur App: Es wurden diverse Verbesserungen in der Datenverarbeitung durchgeführt",
+    "typ": "info"
   },
   "sonderartikel": {
     "aktiv": false,
