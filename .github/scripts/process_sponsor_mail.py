@@ -107,6 +107,61 @@ def parse_breakfast_booking(msg, uid):
     }, ""
 
 
+def parse_paypal_decision(msg, uid):
+    """Parse the participant's explicit PayPal payment decision email."""
+    body = message_text(msg)
+    user_value = field(body, ["user", "Name", "Teilnehmer", "App-Name"])
+    normalized = user_value.upper().replace("Ä", "AE").replace("Ö", "OE").replace("Ü", "UE")
+    if "ZAHLUNG VOM TEILNEHMER" not in normalized:
+        return None, "Keine PayPal-Statusmeldung"
+
+    if "ALS NICHT BEZAHLT BESTAETIGT" in normalized:
+        payment_status = "NICHT BEZAHLT"
+    elif "ALS BEZAHLT BESTAETIGT" in normalized:
+        payment_status = "BEZAHLT"
+    else:
+        return None, "PayPal-Zahlungsstatus fehlt"
+
+    name = re.sub(
+        r"\\s*[–-]\\s*ZAHLUNG VOM TEILNEHMER ALS (?:NICHT )?BEZAHLT BESTÄTIGT\\s*$",
+        "", user_value, flags=re.I
+    ).strip()
+    amount_raw = field(body, ["amount", "Betrag"])
+    amount_match = re.search(r"(\\d+(?:[.,]\\d{1,2})?)", amount_raw)
+    if not amount_match:
+        return None, "PayPal-Betrag fehlt"
+    try:
+        amount = round(float(amount_match.group(1).replace(",", ".")), 2)
+    except ValueError:
+        return None, "PayPal-Betrag ist ungültig"
+    if amount not in (5.0, 10.0, 15.0):
+        return None, "PayPal-Betrag ist nicht freigegeben"
+
+    stamp = field(body, ["timestamp", "Zeitstempel", "Datum"])
+    decision_time = None
+    if stamp:
+        for fmt in ("%d.%m.%Y, %H:%M:%S", "%d.%m.%Y, %H:%M", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M"):
+            try:
+                decision_time = datetime.strptime(stamp, fmt).replace(tzinfo=TZ)
+                break
+            except ValueError:
+                pass
+    if decision_time is None:
+        try:
+            decision_time = parsedate_to_datetime(msg.get("Date")).astimezone(TZ)
+        except Exception:
+            decision_time = datetime.now(TZ)
+
+    return {
+        "id": str(uid),
+        "request_id": field(body, ["request_id", "Anfrage-ID"]),
+        "name": name or "Unbekannter Teilnehmer",
+        "amount": amount,
+        "status": payment_status,
+        "created_at": decision_time.isoformat()
+    }, ""
+
+
 def parse_confirmation(msg, uid):
     """Recognize the app's explicit settlement-confirmation email."""
     subject = decode_header_value(msg.get("Subject", ""))
@@ -206,7 +261,7 @@ def search_relevant_uids(mail, last_uid):
 def commit_state():
     subprocess.run(["git", "config", "user.name", "github-actions[bot]"], cwd=ROOT, check=True)
     subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], cwd=ROOT, check=True)
-    subprocess.run(["git", "add", ".github/state/sponsor-mail-state.json", "config.json", "breakfast-log.json"], cwd=ROOT, check=True)
+    subprocess.run(["git", "add", ".github/state/sponsor-mail-state.json", "config.json", "breakfast-log.json", "paypal-log.json"], cwd=ROOT, check=True)
     changed = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
     if changed.returncode == 1:
         subprocess.run(["git", "commit", "-m", "Automatische Kaffee-Spenderfreigabe"], cwd=ROOT, check=True)
@@ -221,6 +276,10 @@ def main():
     breakfast_log = load_json(breakfast_log_path, {"entries": []})
     if not isinstance(breakfast_log, dict) or not isinstance(breakfast_log.get("entries"), list):
         breakfast_log = {"entries": []}
+    paypal_log_path = ROOT / "paypal-log.json"
+    paypal_log = load_json(paypal_log_path, {"entries": []})
+    if not isinstance(paypal_log, dict) or not isinstance(paypal_log.get("entries"), list):
+        paypal_log = {"entries": []}
     birthday = config.setdefault("geburtstag", {})
     now = datetime.now(TZ)
 
@@ -271,6 +330,14 @@ def main():
             if sender != ALLOWED_SENDER:
                 print(f"UID {uid}: passende Betreff-/Textnachricht, aber Absender {sender or '(unbekannt)'} nicht freigegeben")
                 continue
+            paypal_entry, paypal_reason = parse_paypal_decision(msg, uid)
+            if paypal_entry:
+                if not any(str(item.get("id")) == paypal_entry["id"] for item in paypal_log["entries"] if isinstance(item, dict)):
+                    paypal_log["entries"].append(paypal_entry)
+                    paypal_log["entries"] = paypal_log["entries"][-1000:]
+                    print(f"PayPal-Protokoll: {paypal_entry['name']} – {paypal_entry['amount']:.2f} EUR – {paypal_entry['status']}")
+                continue
+
             breakfast_entry, breakfast_reason = parse_breakfast_booking(msg, uid)
             if breakfast_entry:
                 if not any(str(item.get("id")) == breakfast_entry["id"] for item in breakfast_log["entries"] if isinstance(item, dict)):
