@@ -68,6 +68,45 @@ def field(text, names):
             return match.group(1).strip()
     return ""
 
+def parse_breakfast_booking(msg, uid):
+    """Parse confirmed Friday-breakfast bookings sent by the participant app."""
+    body = message_text(msg)
+    subject = decode_header_value(msg.get("Subject", ""))
+    item = field(body, ["item", "Artikel", "Produkt"])
+    normalized = (subject + "\\n" + item).upper().replace("Ü", "UE")
+    if "FRUEHSTUECKSBUCHUNG" not in normalized and "FREITAGSFRUEHSTUECK" not in normalized:
+        return None, "Keine Frühstücksbuchung"
+
+    name = field(body, ["user", "Name", "Teilnehmer", "App-Name"])
+    name = re.sub(r"\\s+", " ", name).strip()
+    if not name or name.lower() in ("anonymer teilnehmer", "unbekannter teilnehmer"):
+        return None, "Teilnehmername fehlt"
+
+    stamp = field(body, ["timestamp", "Zeitstempel", "Datum"])
+    booking_time = None
+    if stamp:
+        for fmt in ("%d.%m.%Y, %H:%M:%S", "%d.%m.%Y, %H:%M", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M"):
+            try:
+                booking_time = datetime.strptime(stamp, fmt).replace(tzinfo=TZ)
+                break
+            except ValueError:
+                pass
+    if booking_time is None:
+        try:
+            booking_time = parsedate_to_datetime(msg.get("Date")).astimezone(TZ)
+        except Exception:
+            booking_time = datetime.now(TZ)
+
+    notification_id = field(body, ["notification_id", "Anmelde-ID", "Buchungsnummer"])
+    return {
+        "id": str(uid),
+        "notification_id": notification_id,
+        "name": name,
+        "item": item or "Freitagsfrühstück",
+        "created_at": booking_time.isoformat()
+    }, ""
+
+
 def parse_confirmation(msg, uid):
     """Recognize the app's explicit settlement-confirmation email."""
     subject = decode_header_value(msg.get("Subject", ""))
@@ -167,7 +206,7 @@ def search_relevant_uids(mail, last_uid):
 def commit_state():
     subprocess.run(["git", "config", "user.name", "github-actions[bot]"], cwd=ROOT, check=True)
     subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], cwd=ROOT, check=True)
-    subprocess.run(["git", "add", ".github/state/sponsor-mail-state.json", "config.json"], cwd=ROOT, check=True)
+    subprocess.run(["git", "add", ".github/state/sponsor-mail-state.json", "config.json", "breakfast-log.json"], cwd=ROOT, check=True)
     changed = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
     if changed.returncode == 1:
         subprocess.run(["git", "commit", "-m", "Automatische Kaffee-Spenderfreigabe"], cwd=ROOT, check=True)
@@ -178,6 +217,10 @@ def main():
     password = os.environ["YAHOO_APP_PASSWORD"]
     state = load_json(STATE, {"last_uid": 0, "processed_ids": []})
     config = load_json(CONFIG, {})
+    breakfast_log_path = ROOT / "breakfast-log.json"
+    breakfast_log = load_json(breakfast_log_path, {"entries": []})
+    if not isinstance(breakfast_log, dict) or not isinstance(breakfast_log.get("entries"), list):
+        breakfast_log = {"entries": []}
     birthday = config.setdefault("geburtstag", {})
     now = datetime.now(TZ)
 
@@ -228,6 +271,14 @@ def main():
             if sender != ALLOWED_SENDER:
                 print(f"UID {uid}: passende Betreff-/Textnachricht, aber Absender {sender or '(unbekannt)'} nicht freigegeben")
                 continue
+            breakfast_entry, breakfast_reason = parse_breakfast_booking(msg, uid)
+            if breakfast_entry:
+                if not any(str(item.get("id")) == breakfast_entry["id"] for item in breakfast_log["entries"] if isinstance(item, dict)):
+                    breakfast_log["entries"].append(breakfast_entry)
+                    breakfast_log["entries"] = breakfast_log["entries"][-1000:]
+                    print(f"Frühstücksprotokoll: {breakfast_entry['name']} – {breakfast_entry['created_at']}")
+                continue
+
             confirmation, confirmation_reason = parse_confirmation(msg, uid)
             if confirmation:
                 settlement = birthday.get("abrechnung") or {}
