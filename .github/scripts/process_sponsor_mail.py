@@ -314,9 +314,9 @@ def main():
 
         state["processed_ids"] = sorted(processed)[-1000:]
         if changed:
+            CONFIG.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             STATE.parent.mkdir(parents=True, exist_ok=True)
             STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        if changed:
             commit_state()
     finally:
         try:
