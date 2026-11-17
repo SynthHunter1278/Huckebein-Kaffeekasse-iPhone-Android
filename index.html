@@ -926,19 +926,23 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         }
         birthdayCoffeeActive = true;
         const minutes = new Date().getHours() * 60 + new Date().getMinutes();
-        const giver = birthdayEvent.spender || "";
+        const giver = birthdayEvent.spender || birthdayEvent.giver || "";
         if (minutes < 360) {
             text.textContent = giver
-                ? `Ab 06:00 Uhr spendiert ${giver} einen Becher Kaffee für alle. Jeder Teilnehmer kann über seine Kassen-App einmalig einen Becher kostenlos abholen.`
+                ? `Ab 06:00 Uhr spendiert ${giver} einen Becher Kaffee für alle. Jeder Teilnehmer kann über seine Kassen-App einmalig einen Becher kostenlos abholen. Vielen Dank an ${giver}!`
                 : "Ab 06:00 Uhr kann jeder Teilnehmer einmalig einen Becher Kaffee kostenlos abholen.";
         } else if (minutes < 900) {
             text.textContent = hasClaimedFreeCoffee()
-                ? "Du hast deinen kostenlosen Becher für diese Aktion bereits abgerufen. Weitere Kaffees kosten den normalen Preis."
+                ? (giver
+                    ? `Du hast deinen kostenlosen Becher bereits abgerufen. Die Spende kam von ${giver} – vielen Dank!`
+                    : "Du hast deinen kostenlosen Becher für diese Aktion bereits abgerufen. Weitere Kaffees kosten den normalen Preis.")
                 : (giver
-                    ? `Heute spendiert ${giver} einen Becher Kaffee für alle – einmalig pro Teilnehmer über seine Kassen-App und GRATIS bis 15:00 Uhr!`
+                    ? `Heute spendiert ${giver} einen Becher Kaffee für alle – einmalig pro Teilnehmer über seine Kassen-App und GRATIS bis 15:00 Uhr. Bitte bedankt euch bei ${giver}!`
                     : "Du kannst dir bis 15:00 Uhr einmalig einen Becher Kaffee kostenlos abholen.");
         } else {
-            text.textContent = "Die kostenlose Kaffeeaktion ist beendet. Vielen Dank!";
+            text.textContent = giver
+                ? `Die kostenlose Kaffeeaktion von ${giver} ist beendet. Vielen Dank an ${giver}!`
+                : "Die kostenlose Kaffeeaktion ist beendet. Vielen Dank!";
         }
         banner.style.display = "block";
         if (!wasVisible) triggerBirthdayAttention();
@@ -1722,6 +1726,10 @@ function getCalendarWeek(date) {
     async function requestBirthdaySponsor() {
         const button = document.getElementById("birthdaySponsorButton");
         const status = document.getElementById("birthdaySponsorStatus");
+        if (!isBirthdaySponsorRequestWindowNow()) {
+            showStatus("Spenderanmeldungen sind nur zwischen 06:00 und 15:00 Uhr möglich.", false);
+            return;
+        }
         button.disabled = true;
         button.textContent = "⏳ Prüfe aktuelle Aktion...";
         // Vor dem Versand immer den zentralen Status laden. Bei fehlender Verbindung sicherheitshalber abbrechen.
