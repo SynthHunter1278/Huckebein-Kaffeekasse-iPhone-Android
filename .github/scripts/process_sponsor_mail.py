@@ -270,7 +270,7 @@ def main():
             processed.add(request["request_id"])
             request_time = request["requested_at"]
             # Nur Anmeldungen, die tatsächlich zwischen 06:00 und 15:00 Uhr eingingen.
-            if os.getenv("SPONSOR_TEST_BYPASS_WINDOW") != "1" and not is_signup_time_valid(request_time, now):
+            if not is_signup_time_valid(request_time, now):
                 print(f"UID {uid}: außerhalb des Anmeldezeitfensters")
                 continue
             # Ein verspäteter GitHub-Start darf eine rechtzeitig eingegangene Anmeldung
