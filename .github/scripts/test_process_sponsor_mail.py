@@ -56,7 +56,7 @@ class SponsorMailTests(unittest.TestCase):
     def test_friday_breakfast_booking(self):
         msg = make_mail(
             "KAFFEEKASSE – FRÜHSTÜCKSBUCHUNG",
-            "item: Freitagsfrühstück\\nuser: Testperson\\ntimestamp: 16.11.2026, 12:00:00\\nnotification_id: BREAKFAST-123",
+            "item: Freitagsfrühstück\nuser: Testperson\ntimestamp: 16.11.2026, 12:00:00\nnotification_id: BREAKFAST-123",
         )
         entry, reason = sponsor_mail.parse_breakfast_booking(msg, 301)
         self.assertEqual(reason, "")
