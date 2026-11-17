@@ -713,7 +713,16 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
       </div>
       <div id="paypalFundingCard" class="funding-card">
         <h3><span class="funding-icon">💳</span> PayPal-Aufladung</h3>
-        <p>Wähle einen Betrag. Anschließend wirst du zu PayPal weitergeleitet.</p>
+        <p>Wähle einen Betrag. Nach deiner Rückkehr von PayPal bestätigst du, ob du bezahlt hast.</p>
+        <div id="paypalReturnConfirmation" style="display:none;margin:12px 0;padding:14px;border:1px solid #579dcc;border-radius:10px;background:#102b43;">
+          <strong style="display:block;margin-bottom:8px;">PayPal-Aufladung – bitte Zahlungsstatus angeben</strong>
+          <p id="paypalReturnDetails" style="margin:0 0 12px;font-size:13px;line-height:1.45;color:#dcecf7;"></p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button type="button" id="paypalPaidButton" onclick="confirmPaypalPayment(true)" style="padding:12px 8px;border:0;border-radius:8px;background:#16834a;color:white;font-weight:800;">✓ BEZAHLT</button>
+            <button type="button" id="paypalNotPaidButton" onclick="confirmPaypalPayment(false)" style="padding:12px 8px;border:0;border-radius:8px;background:#8b3038;color:white;font-weight:800;">✕ NICHT BEZAHLT</button>
+          </div>
+          <p id="paypalReturnStatus" style="margin:10px 0 0;font-size:12px;line-height:1.4;color:#dcecf7;"></p>
+        </div>
         <button type="button" id="paypalButton" class="btn btn-paypal" onclick="togglePaypalMenu()">MIT PAYPAL AUFLADEN</button>
         <div id="paypalMenu" class="paypal-dropdown">
           <div class="paypal-dropdown-title">Betrag wählen</div>
@@ -1921,59 +1930,133 @@ function executePaypalDeposit(betrag) {
         showStatus("PayPal-Aufladung ist derzeit deaktiviert.", false);
         return;
     }
-    const currentDay = new Date().getDate();
+    if (![5, 10, 15].includes(Number(betrag))) {
+        showStatus("Ungültiger Aufladebetrag.", false);
+        return;
+    }
 
-    const passenderCode =
-        (betrag * CODE_MULTIPLIER) +
-        (currentDay * DAY_MULTIPLIER) +
-        CODE_OFFSET;
-
-    try {
-        localStorage.setItem(
-            'kaffeekasse_pending_code',
-            passenderCode.toString()
-        );
-    } catch (e) {}
-
-    // E-Mail über die gestartete Aufladung
-    const templateParams = {
-        user: benutzerName,
-        amount: betrag.toFixed(2).replace('.', ','),
-        timestamp: new Date().toLocaleString('de-DE')
+    const request = {
+        id: "PP-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7).toUpperCase(),
+        amount: Number(betrag),
+        user: String(benutzerName || "Unbekannt"),
+        requestedAt: new Date().toISOString()
     };
 
-    if (window.emailjs) emailjs.send(
-        "service_j85pq0k",
-        "template_3eki0ij",
-        templateParams
-    ).then(function(response) {
-        console.log('PayPal-Aufladungs-E-Mail versendet.');
-    }).catch(function(error) {
-        console.error(
-            'Fehler beim E-Mail-Versand:',
-            error
-        );
-    });
+    try {
+        localStorage.removeItem("kaffeekasse_pending_code");
+        localStorage.setItem("kaffeekasse_pending_paypal", JSON.stringify(request));
+    } catch (e) {
+        showStatus("Der Aufladevorgang konnte auf diesem Gerät nicht gespeichert werden. Bitte Browser-Speicher prüfen.", false);
+        return;
+    }
 
-    // Weiterleitung zu PayPal
-    const paypalUrl =
-        `https://paypal.me/${paypalMeName}/${betrag}`;
-
+    const paypalUrl = `https://paypal.me/${paypalMeName}/${betrag}`;
     window.location.href = paypalUrl;
 }
 
+    function sendPaypalDecisionEmail(request, paid) {
+        const decision = paid ? "ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT" : "ZAHLUNG VOM TEILNEHMER ALS NICHT BEZAHLT BESTÄTIGT";
+        const templateParams = {
+            user: `${request.user} – ${decision}`,
+            amount: Number(request.amount).toFixed(2).replace(".", ",") + " €",
+            timestamp: new Date().toLocaleString("de-DE"),
+            status: paid ? "BEZAHLT" : "NICHT BEZAHLT",
+            request_id: request.id,
+            request_timestamp: new Date(request.requestedAt).toLocaleString("de-DE")
+        };
+
+        if (!window.emailjs) {
+            console.error("EmailJS ist nicht verfügbar; PayPal-Status konnte nicht per E-Mail gemeldet werden.");
+            return Promise.reject(new Error("EmailJS ist nicht verfügbar."));
+        }
+
+        return emailjs.send("service_j85pq0k", "template_3eki0ij", templateParams);
+    }
+
+    function confirmPaypalPayment(paid) {
+        let request = null;
+        try {
+            request = JSON.parse(localStorage.getItem("kaffeekasse_pending_paypal") || "null");
+        } catch (e) {}
+
+        if (!request || ![5, 10, 15].includes(Number(request.amount))) {
+            showStatus("Es liegt keine gültige PayPal-Aufladeanfrage vor.", false);
+            return;
+        }
+
+        const paidButton = document.getElementById("paypalPaidButton");
+        const notPaidButton = document.getElementById("paypalNotPaidButton");
+        const returnStatus = document.getElementById("paypalReturnStatus");
+        paidButton.disabled = true;
+        notPaidButton.disabled = true;
+
+        if (paid) {
+            const currentDay = new Date().getDate();
+            const code = (Number(request.amount) * CODE_MULTIPLIER) + (currentDay * DAY_MULTIPLIER) + CODE_OFFSET;
+            try {
+                localStorage.setItem("kaffeekasse_pending_code", String(code));
+                localStorage.removeItem("kaffeekasse_pending_paypal");
+            } catch (e) {
+                paidButton.disabled = false;
+                notPaidButton.disabled = false;
+                showStatus("Der Aufladecode konnte nicht gespeichert werden. Bitte Browser-Speicher prüfen.", false);
+                return;
+            }
+
+            document.getElementById("paypalReturnConfirmation").style.display = "none";
+            document.getElementById("paypalMenu").style.display = "none";
+            document.getElementById("cashMenu").style.display = "block";
+            document.getElementById("otpInput").value = String(code);
+            showTemporaryStatus("Danke! Du hast die Zahlung als erfolgt bestätigt. Dein Aufladecode ist bereit.", true, 6000);
+        } else {
+            try {
+                localStorage.removeItem("kaffeekasse_pending_paypal");
+                localStorage.removeItem("kaffeekasse_pending_code");
+            } catch (e) {}
+            returnStatus.textContent = "Du hast angegeben, nicht bezahlt zu haben. Es wurde kein Aufladecode erstellt.";
+            returnStatus.style.color = "#ffd7da";
+        }
+
+        sendPaypalDecisionEmail(request, paid).then(() => {
+            console.log("PayPal-Zahlungsstatus per E-Mail gemeldet.");
+            if (!paid) returnStatus.textContent += " Die Meldung wurde an die Kassenverwaltung gesendet.";
+        }).catch(error => {
+            console.error("PayPal-Status-E-Mail fehlgeschlagen:", error);
+            if (!paid) returnStatus.textContent += " Die E-Mail konnte leider nicht gesendet werden.";
+        });
+
+        if (!paid) {
+            paidButton.style.display = "none";
+            notPaidButton.style.display = "none";
+        }
+    }
+
     function checkPendingPaypalCode() {
         try {
-            const pendingCode = localStorage.getItem('kaffeekasse_pending_code');
-            if (pendingCode) {
+            const request = JSON.parse(localStorage.getItem("kaffeekasse_pending_paypal") || "null");
+            const confirmation = document.getElementById("paypalReturnConfirmation");
+            if (request && [5, 10, 15].includes(Number(request.amount)) && confirmation) {
                 showPage("topup");
-                document.getElementById('paypalMenu').style.display = "none";
-                document.getElementById('cashMenu').style.display = "block";
-                document.getElementById('otpInput').value = pendingCode;
-                // Keine dauerhafte Willkommen-zurück-Meldung: der Code ist direkt sichtbar.
-                showTemporaryStatus("Aufladecode bereit. Bitte nur nach erfolgreicher PayPal-Zahlung einlösen.", true, 4500);
+                document.getElementById("paypalMenu").style.display = "none";
+                document.getElementById("cashMenu").style.display = "none";
+                document.getElementById("paypalReturnDetails").textContent =
+                    `Du hast ${Number(request.amount).toFixed(2).replace(".", ",")} € aufgeladen. Bitte gib an, ob du die Zahlung bei PayPal durchgeführt hast.`;
+                document.getElementById("paypalReturnStatus").textContent = "";
+                document.getElementById("paypalPaidButton").style.display = "";
+                document.getElementById("paypalNotPaidButton").style.display = "";
+                document.getElementById("paypalPaidButton").disabled = false;
+                document.getElementById("paypalNotPaidButton").disabled = false;
+                confirmation.style.display = "block";
+                return;
             }
-        } catch(e) {}
+
+            // Alte, vor der Umstellung lokal gespeicherte Codes nicht ungeprüft anzeigen.
+            if (localStorage.getItem("kaffeekasse_pending_code")) {
+                localStorage.removeItem("kaffeekasse_pending_code");
+            }
+        } catch(e) {
+            console.warn("PayPal-Rückkehrstatus konnte nicht gelesen werden:", e);
+        }
     }
 
     // Zeitanzeige-Logik: Durch die CSS-:not-Korrektur leuchtet das Abzeichen jetzt in reinem Weiß
