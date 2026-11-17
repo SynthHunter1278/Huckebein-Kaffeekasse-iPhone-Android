@@ -435,6 +435,8 @@ def main():
             CONFIG.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             STATE.parent.mkdir(parents=True, exist_ok=True)
             STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            breakfast_log_path.write_text(json.dumps(breakfast_log, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            paypal_log_path.write_text(json.dumps(paypal_log, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             commit_state()
     finally:
         try:
