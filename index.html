@@ -1538,6 +1538,12 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
             return;
         }
 
+        // Ein gesponserter Gratiskaffee bleibt auch bei negativem Guthaben abrufbar.
+        if (buttonId === 'btn-kaffee' && isBirthdayFreeWindowNow() && !hasClaimedFreeCoffee()) {
+            btn.classList.remove('btn-expensive');
+            return;
+        }
+
         if (meinSaldo < price) { btn.classList.add('btn-expensive'); } 
         else { btn.classList.remove('btn-expensive'); }
     }
@@ -1597,7 +1603,7 @@ function getCalendarWeek(date) {
         }
         const birthdayFreeCoffee = !isSpecialProduct && itemName === "Automaten Kaffee" && isBirthdayFreeWindowNow() && !hasClaimedFreeCoffee();
         amount = isSpecialProduct ? specialProduct.preis : getPriceForItem(itemName, amount);
-        if (meinSaldo < 0) {
+        if (meinSaldo < 0 && !birthdayFreeCoffee) {
             showStatus("Dein Guthaben ist im Minus. Bitte zuerst aufladen; Produktbuchungen sind gesperrt.", false);
             return false;
         }
@@ -1610,7 +1616,7 @@ function getCalendarWeek(date) {
             return false;
         }
 
-        if (meinSaldo < amount) {
+        if (meinSaldo < amount && !birthdayFreeCoffee) {
             showStatus(`Guthaben zu gering! Du benötigst ${amount.toFixed(2).replace('.', ',')} € für ${itemName}.`, false);
             return false;
         }
