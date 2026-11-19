@@ -643,13 +643,20 @@
             const oldText = String(oldMessage.text || "").trim();
             const newText = String(updatedConfig.nachricht.text || "").trim();
             const newActive = Boolean(updatedConfig.nachricht.aktiv);
+            const oldActive = Boolean(oldMessage.aktiv ?? oldMessage.active);
             const oldType = oldMessage.typ || (oldMessage.color === "red" ? "warnung" : "info");
 
-            // Bei Veröffentlichung eines anderen aktiven Textes wird der bisherige
-            // Text immer zur letzten Nachricht. Das gilt auch dann, wenn der alte
-            // Text zwischenzeitlich ausgeschaltet war.
+            // Beim Ausblenden werden beide bisherigen Meldungen zurückgesetzt.
+            // Der Reset-Zeitpunkt bleibt auch nach erneutem Einblenden in config.json,
+            // damit Geräte mit älteren lokalen Nachrichten-Caches diese sicher löschen.
             let previousMessage = oldPrevious;
-            if (newActive && newText && oldText && oldText !== newText) {
+            if (!newActive) {
+                previousMessage = null;
+                if (oldActive) {
+                    updatedConfig.nachrichtZurueckgesetztAm = new Date().toISOString();
+                }
+            } else if (newText && oldText && oldText !== newText) {
+                // Bei einer neuen aktiven Meldung wird die bisherige zur letzten Nachricht.
                 previousMessage = { text: oldText, typ: oldType };
             }
             if (previousMessage && typeof previousMessage === "string") {
@@ -677,7 +684,9 @@
             const result = await readApiJson(response);
             currentSha = result.content?.sha || currentSha;
             loadedConfig = finalConfig;
-            showStatus("Gespeichert! Die aktuelle und die vorherige Nachricht bleiben in der Kassen-App sichtbar.", true);
+            showStatus(newActive
+                ? "Gespeichert! Die Nachricht ist in der Kassen-App eingeblendet."
+                : "Gespeichert! Die Nachrichten sind ausgeblendet; alte Meldungen werden nicht erneut angezeigt.", true);
         } catch (e) {
             showStatus("Speichern fehlgeschlagen: " + e.message, false);
         } finally {
