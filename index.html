@@ -1890,9 +1890,15 @@ function getCalendarWeek(date) {
         }
 
         const currentDay = new Date().getDate();
-        const calculatedAmount = Math.round((codeNumber - CODE_OFFSET - (currentDay * DAY_MULTIPLIER)) / CODE_MULTIPLIER * 100) / 100;
+        const rawAmount = (codeNumber - CODE_OFFSET - (currentDay * DAY_MULTIPLIER)) / CODE_MULTIPLIER;
+        const amountCents = Math.round(rawAmount * 100);
+        const calculatedAmount = amountCents / 100;
+        // Strikte Rückprüfung: Der eingegebene Code muss exakt dem heutigen
+        // Tagescode für einen Cent-genauen Betrag entsprechen. Die alte reine
+        // Bereichsprüfung ließ auch Codes vom Vortag mit verändertem Betrag durch.
+        const expectedCode = amountCents * CODE_MULTIPLIER + currentDay * DAY_MULTIPLIER + CODE_OFFSET;
 
-        if (calculatedAmount > 0 && calculatedAmount <= 100) {
+        if (codeNumber === expectedCode && calculatedAmount > 0 && calculatedAmount <= 100) {
             usedCodes.push(codeInput);
             try {
                 localStorage.setItem('kaffeekasse_used_codes', JSON.stringify(usedCodes));
