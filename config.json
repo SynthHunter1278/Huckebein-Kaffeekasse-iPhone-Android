@@ -48,7 +48,7 @@
     }
   },
   "paypal": {
-    "aktiv": true
+    "aktiv": false
   },
   "letzteNachricht": {
     "text": "Info zur App: Es wurden diverse Verbesserungen in der Datenverarbeitung durchgeführt",
