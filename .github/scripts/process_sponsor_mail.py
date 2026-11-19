@@ -345,6 +345,16 @@ def main():
         processed = set(state.get("processed_ids", []))
         changed = False
 
+        # Frühstücksliste jeden Freitag ab 12:00 Uhr (Europe/Berlin)
+        # einmalig leeren. Der 5-Minuten-Zeitplan fängt auch verzögerte Läufe ab.
+        cleanup_date = now.date().isoformat()
+        if now.weekday() == 4 and now.time() >= time(12, 0) and state.get("breakfast_cleanup_date") != cleanup_date:
+            deleted_count = len(breakfast_log["entries"])
+            breakfast_log["entries"] = []
+            state["breakfast_cleanup_date"] = cleanup_date
+            changed = True
+            print(f"Freitagsfrühstück: {deleted_count} Meldungen ab 12:00 Uhr gelöscht.")
+
         for uid in sorted(uids):
             status, fetched = mail.uid("fetch", str(uid), "(RFC822)")
             if status != "OK" or not fetched or not isinstance(fetched[0], tuple):
