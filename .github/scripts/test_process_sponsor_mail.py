@@ -64,6 +64,25 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(entry["item"], "Freitagsfrühstück")
         self.assertEqual(entry["notification_id"], "BREAKFAST-123")
 
+
+    def test_free_coffee_redemption_during_sponsor_action(self):
+        msg = make_mail(
+            "☕ KAFFEEKASSE – KAFFEEAKTION – GRATISENTNAHME",
+            "item: KAFFEEAKTION GRATISENTNAHME | 1 Automatenkaffee | Aktions-ID: KAFFEE-20261116-123\n"
+            "user: Testperson\ntimestamp: 16.11.2026, 12:00:00\n"
+            "notification_id: FREE-COFFEE-123",
+        )
+        entry, reason = sponsor_mail.parse_free_coffee_redemption(msg, 501)
+        self.assertEqual(reason, "")
+        self.assertEqual(entry["name"], "Testperson")
+        self.assertEqual(entry["notification_id"], "FREE-COFFEE-123")
+        self.assertEqual(entry["item"], "KAFFEEAKTION GRATISENTNAHME | 1 Automatenkaffee | Aktions-ID: KAFFEE-20261116-123")
+
+    def test_other_free_coffee_mail_is_not_counted(self):
+        msg = make_mail("KAFFEEKASSE – BUCHUNG", "item: Normaler Kaffee\nuser: Testperson")
+        entry, reason = sponsor_mail.parse_free_coffee_redemption(msg, 502)
+        self.assertIsNone(entry)
+
     def test_paypal_paid_decision(self):
         msg = make_mail(
             "KAFFEEKASSE - PAYPAL-AUFLADUNG",
