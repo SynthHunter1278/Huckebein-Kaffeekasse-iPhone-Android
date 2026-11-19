@@ -107,6 +107,45 @@ def parse_breakfast_booking(msg, uid):
     }, ""
 
 
+
+def parse_free_coffee_redemption(msg, uid):
+    """Parse one successful free-coffee redemption during a sponsor action."""
+    body = message_text(msg)
+    subject = decode_header_value(msg.get("Subject", ""))
+    combined = (subject + "\n" + body).upper().replace("Ü", "UE")
+    if "KAFFEEAKTION" not in combined or "GRATISENTNAHME" not in combined:
+        return None, "Keine Freikaffee-Entnahme"
+
+    name = re.sub(r"\s+", " ", field(body, ["user", "Name", "Teilnehmer", "App-Name"])).strip()
+    if not name or name.lower() in ("anonymer teilnehmer", "unbekannter teilnehmer"):
+        return None, "Teilnehmername fehlt"
+
+    item = field(body, ["item", "Artikel", "Produkt"])
+    booking_id = field(body, ["notification_id", "Buchungsnummer", "Anmelde-ID"])
+    stamp = field(body, ["timestamp", "Zeitstempel", "Datum"])
+    redeemed_at = None
+    if stamp:
+        for fmt in ("%d.%m.%Y, %H:%M:%S", "%d.%m.%Y, %H:%M", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M"):
+            try:
+                redeemed_at = datetime.strptime(stamp, fmt).replace(tzinfo=TZ)
+                break
+            except ValueError:
+                pass
+    if redeemed_at is None:
+        try:
+            redeemed_at = parsedate_to_datetime(msg.get("Date")).astimezone(TZ)
+        except Exception:
+            redeemed_at = datetime.now(TZ)
+
+    return {
+        "id": booking_id or str(uid),
+        "notification_id": booking_id,
+        "name": name,
+        "item": item or "1 Automatenkaffee",
+        "created_at": redeemed_at.isoformat()
+    }, ""
+
+
 def parse_paypal_decision(msg, uid):
     """Parse the participant's explicit PayPal payment decision email."""
     body = message_text(msg)
@@ -261,7 +300,7 @@ def search_relevant_uids(mail, last_uid):
 def commit_state():
     subprocess.run(["git", "config", "user.name", "github-actions[bot]"], cwd=ROOT, check=True)
     subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], cwd=ROOT, check=True)
-    subprocess.run(["git", "add", ".github/state/sponsor-mail-state.json", "config.json", "breakfast-log.json", "paypal-log.json"], cwd=ROOT, check=True)
+    subprocess.run(["git", "add", ".github/state/sponsor-mail-state.json", "config.json", "breakfast-log.json", "paypal-log.json", "free-coffee-log.json"], cwd=ROOT, check=True)
     changed = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
     if changed.returncode == 1:
         subprocess.run(["git", "commit", "-m", "Automatische Kaffee-Spenderfreigabe"], cwd=ROOT, check=True)
@@ -280,6 +319,10 @@ def main():
     paypal_log = load_json(paypal_log_path, {"entries": []})
     if not isinstance(paypal_log, dict) or not isinstance(paypal_log.get("entries"), list):
         paypal_log = {"entries": []}
+    free_coffee_log_path = ROOT / "free-coffee-log.json"
+    free_coffee_log = load_json(free_coffee_log_path, {"entries": []})
+    if not isinstance(free_coffee_log, dict) or not isinstance(free_coffee_log.get("entries"), list):
+        free_coffee_log = {"entries": []}
     birthday = config.setdefault("geburtstag", {})
     now = datetime.now(TZ)
 
@@ -330,6 +373,14 @@ def main():
             if sender != ALLOWED_SENDER:
                 print(f"UID {uid}: passende Betreff-/Textnachricht, aber Absender {sender or '(unbekannt)'} nicht freigegeben")
                 continue
+            free_coffee_entry, free_coffee_reason = parse_free_coffee_redemption(msg, uid)
+            if free_coffee_entry:
+                if not any(str(item.get("id")) == free_coffee_entry["id"] for item in free_coffee_log["entries"] if isinstance(item, dict)):
+                    free_coffee_log["entries"].append(free_coffee_entry)
+                    free_coffee_log["entries"] = free_coffee_log["entries"][-2000:]
+                    print("Freikaffee-Protokoll: " + free_coffee_entry["name"] + " – " + free_coffee_entry["created_at"])
+                continue
+
             paypal_entry, paypal_reason = parse_paypal_decision(msg, uid)
             if paypal_entry:
                 if not any(str(item.get("id")) == paypal_entry["id"] for item in paypal_log["entries"] if isinstance(item, dict)):
@@ -437,6 +488,7 @@ def main():
             STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             breakfast_log_path.write_text(json.dumps(breakfast_log, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             paypal_log_path.write_text(json.dumps(paypal_log, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            free_coffee_log_path.write_text(json.dumps(free_coffee_log, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             commit_state()
     finally:
         try:
