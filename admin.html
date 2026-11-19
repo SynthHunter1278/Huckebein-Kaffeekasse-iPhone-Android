@@ -122,6 +122,7 @@
             <button type="button" class="nav-button" data-admin-page="abrechnung" onclick="showAdminPage('abrechnung')"><span class="nav-icon">▤</span><span class="nav-copy"><strong>Abrechnung</strong><small>Kaffee-Spenden</small></span></button>
             <button type="button" class="nav-button" data-admin-page="nachricht" onclick="showAdminPage('nachricht')"><span class="nav-icon">📢</span><span class="nav-copy"><strong>Nachricht an alle</strong><small>Mitteilung veröffentlichen</small></span></button>
             <button type="button" class="nav-button" data-admin-page="paypalprotokoll" onclick="showAdminPage('paypalprotokoll')"><span class="nav-icon">💳</span><span class="nav-copy"><strong>PayPal-Protokoll</strong><small>Aufladungen & Status</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="freikaffee" onclick="showAdminPage('freikaffee')"><span class="nav-icon">☕</span><span class="nav-copy"><strong>Freikaffee</strong><small>Abgerufene Kaffees</small></span></button>
             <button type="button" class="nav-button" data-admin-page="fruehstueck" onclick="showAdminPage('fruehstueck')"><span class="nav-icon">🍳</span><span class="nav-copy"><strong>Frühstück</strong><small>Buchungsübersicht</small></span></button>
         </nav>
         <div class="sidebar-foot">Live-Verwaltung über GitHub<br>Änderungen werden gemeinsam veröffentlicht.</div>
@@ -274,6 +275,15 @@
                     <div id="paypalLogTable" style="overflow-x:auto;"></div>
                 </div>
             </section>
+            <section class="page-panel" data-admin-panel="freikaffee" hidden>
+                <div class="content-card">
+                    <h2>☕ Freikaffee – abgerufene Kaffees</h2>
+                    <p class="small-note">Hier werden nur tatsächlich abgerufene Gratis-Kaffees während einer aktiven Kaffee-Spendenaktion gezählt.</p>
+                    <button type="button" class="btn-resend" onclick="loadFreeCoffeeLog()">↻ Statistik aktualisieren</button>
+                    <div id="freeCoffeeLogSummary" class="settlement-preview">Noch nicht geladen.</div>
+                    <div id="freeCoffeeLogTable" style="overflow-x:auto;"></div>
+                </div>
+            </section>
             <section class="page-panel" data-admin-panel="fruehstueck" hidden>
                 <div class="content-card">
                     <h2>🍳 Freitagsfrühstück – Buchungen</h2>
@@ -299,7 +309,8 @@
         abrechnung: { title: "Abrechnung", description: "Kaffee-Spenden-Abrechnungen verwalten und erneut zustellen." },
         nachricht: { title: "Nachricht an alle", description: "Mitteilungen und Warnungen für alle Teilnehmer veröffentlichen." },
         paypalprotokoll: { title: "PayPal-Protokoll", description: "Zentrale Übersicht der gemeldeten PayPal-Aufladungen." },
-        fruehstueck: { title: "Frühstück", description: "Übersicht der eingegangenen Freitagsfrühstück-Buchungen." }
+        fruehstueck: { title: "Frühstück", description: "Übersicht der eingegangenen Freitagsfrühstück-Buchungen." },
+        freikaffee: { title: "Freikaffee", description: "Abgerufene Gratis-Kaffees während einer Spendenaktion." }
     };
     function showAdminPage(page) {
         if (!adminPageInfo[page]) return;
@@ -450,6 +461,7 @@
             showStatus("Live-Daten erfolgreich geladen.", true);
             loadPaypalLog();
             loadBreakfastLog();
+            loadFreeCoffeeLog();
         } catch (e) {
             configLoaded = false;
             const saveButton = document.querySelector(".btn-save");
@@ -507,6 +519,20 @@
             cell.style.borderBottom = "1px solid #40516a";
             cell.style.whiteSpace = "nowrap";
         });
+    }
+
+
+    async function loadFreeCoffeeLog() {
+        const summary = document.getElementById("freeCoffeeLogSummary");
+        summary.textContent = "Lade Freikaffee-Entnahmen...";
+        try {
+            const data = await loadRepositoryJson("free-coffee-log.json");
+            const entries = Array.isArray(data.entries) ? data.entries : [];
+            summary.textContent = entries.length + " Freikaffee(s) insgesamt abgerufen.";
+            renderLogTable(entries, "freeCoffeeLogTable", "Noch keine Freikaffee-Entnahmen vorhanden.", "breakfast");
+        } catch (error) {
+            summary.textContent = "Freikaffee-Statistik konnte nicht geladen werden: " + error.message;
+        }
     }
 
     async function loadBreakfastLog() {
