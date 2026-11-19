@@ -1211,6 +1211,22 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
             const previousText = document.getElementById("previousNoticeText");
             const CURRENT_NOTICE_CACHE_KEY = "kaffeekasse_current_notice_cache_v1";
             const PREVIOUS_NOTICE_CACHE_KEY = "kaffeekasse_previous_notice_cache_v1";
+            const NOTICE_RESET_CACHE_KEY = "kaffeekasse_notice_reset_cache_v1";
+            const remoteNoticeReset = String(config.nachrichtZurueckgesetztAm || "");
+
+            // Ein vom Admin ausgelöstes Ausblenden löscht auch ältere lokale Meldungen.
+            // Der Reset-Marker bleibt in config.json erhalten, selbst wenn danach
+            // bereits wieder eine neue Nachricht eingeblendet wurde.
+            try {
+                const cachedReset = localStorage.getItem(NOTICE_RESET_CACHE_KEY) || "";
+                if (remoteNoticeReset !== cachedReset) {
+                    localStorage.removeItem(CURRENT_NOTICE_CACHE_KEY);
+                    localStorage.removeItem(PREVIOUS_NOTICE_CACHE_KEY);
+                    localStorage.setItem(NOTICE_RESET_CACHE_KEY, remoteNoticeReset);
+                }
+            } catch (storageError) {
+                console.warn("Nachrichten-Zwischenspeicher konnte nicht zurückgesetzt werden:", storageError);
+            }
 
             // Die Kassen-App merkt sich die zuletzt angezeigte aktive Nachricht lokal.
             // Ändert sich der Text aus config.json, wird die bisherige Nachricht zur letzten.
