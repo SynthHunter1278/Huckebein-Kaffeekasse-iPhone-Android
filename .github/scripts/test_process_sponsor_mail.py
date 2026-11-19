@@ -76,7 +76,18 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(reason, "")
         self.assertEqual(entry["name"], "Testperson")
         self.assertEqual(entry["notification_id"], "FREE-COFFEE-123")
+        self.assertEqual(entry["action_id"], "KAFFEE-20261116-123")
         self.assertEqual(entry["item"], "KAFFEEAKTION GRATISENTNAHME | 1 Automatenkaffee | Aktions-ID: KAFFEE-20261116-123")
+
+
+    def test_free_coffee_without_campaign_id_is_not_counted(self):
+        msg = make_mail(
+            "KAFFEEKASSE – KAFFEEAKTION – GRATISENTNAHME",
+            "item: KAFFEEAKTION GRATISENTNAHME | 1 Automatenkaffee\n"
+            "user: Testperson\ntimestamp: 16.11.2026, 12:00:00",
+        )
+        entry, reason = sponsor_mail.parse_free_coffee_redemption(msg, 503)
+        self.assertIsNone(entry)
 
     def test_other_free_coffee_mail_is_not_counted(self):
         msg = make_mail("KAFFEEKASSE – BUCHUNG", "item: Normaler Kaffee\nuser: Testperson")
