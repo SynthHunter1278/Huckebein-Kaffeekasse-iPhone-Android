@@ -19,7 +19,7 @@
     "automatischFreigegeben": true
   },
   "nachricht": {
-    "aktiv": true,
+    "aktiv": false,
     "text": "Neue Tester: Anna und Marcus",
     "typ": "info"
   },
