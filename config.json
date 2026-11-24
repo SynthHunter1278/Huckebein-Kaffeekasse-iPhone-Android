@@ -57,5 +57,13 @@
     "aktiv": false,
     "name": "Wolters 0,33L im Angebot",
     "preis": 1
+  },
+  "emailKontingent": {
+    "monat": "2026-11",
+    "anzahl": 4,
+    "limit": 200,
+    "gesperrt": false,
+    "aktualisiert": "2026-11-24T18:23:44.114254+01:00",
+    "quelle": "Yahoo-Postfach"
   }
 }
