@@ -1263,7 +1263,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
                 const value = Number(configuredHappyHour.artikel?.[id]);
                 if (Object.prototype.hasOwnProperty.call(configuredHappyHour.artikel || {}, id) && Number.isFinite(value) && value >= 0 && value <= 100) hhArticles[id] = Math.round(value * 100) / 100;
             }
-            happyHourConfig = { aktiv: configuredHappyHour.aktiv === true, datum: /^\\d{4}-\\d{2}-\\d{2}$/.test(String(configuredHappyHour.datum || "")) ? configuredHappyHour.datum : "", start:"10:00", ende:"11:00", artikel:hhArticles };
+            happyHourConfig = { aktiv: configuredHappyHour.aktiv === true, datum: /^\d{4}-\d{2}-\d{2}$/.test(String(configuredHappyHour.datum || "")) ? configuredHappyHour.datum : "", start:"10:00", ende:"11:00", artikel:hhArticles };
             emailQuotaAllowed = isEmailQuotaAllowed(config.emailKontingent);
             paypalEnabled = Boolean(config.paypal?.aktiv ?? config.paypalEnabled ?? true) && emailQuotaAllowed;
             birthdayEvent = config.geburtstag || config.freeCoffee || { aktiv: false, spender: "", datum: "", abrechnung: null };
