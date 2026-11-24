@@ -20,7 +20,7 @@
   },
   "nachricht": {
     "aktiv": false,
-    "text": "Neue Tester: Anna und Marcus",
+    "text": "Benutzt bitte eure App",
     "typ": "info"
   },
   "preise": {
@@ -50,10 +50,7 @@
   "paypal": {
     "aktiv": false
   },
-  "letzteNachricht": {
-    "text": "Info zur App: Es wurden diverse Verbesserungen in der Datenverarbeitung durchgeführt",
-    "typ": "info"
-  },
+  "letzteNachricht": null,
   "sonderartikel": {
     "aktiv": false,
     "name": "Wolters 0,33L im Angebot",
