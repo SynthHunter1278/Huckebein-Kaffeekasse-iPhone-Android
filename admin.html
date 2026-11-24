@@ -119,6 +119,7 @@
             <button type="button" class="nav-button active" data-admin-page="overview" onclick="showAdminPage('overview')"><span class="nav-icon">⌂</span><span class="nav-copy"><strong>Übersicht</strong><small>Status & Zugang</small></span></button>
             <button type="button" class="nav-button" data-admin-page="emailkontingent" onclick="showAdminPage('emailkontingent')"><span class="nav-icon">✉</span><span class="nav-copy"><strong>E-Mail-Kontingent</strong><small>Monatsverbrauch</small></span></button>
             <button type="button" class="nav-button" data-admin-page="sortiment" onclick="showAdminPage('sortiment')"><span class="nav-icon">☕</span><span class="nav-copy"><strong>Sortiment</strong><small>Produkte & Preise</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="happyhour" onclick="showAdminPage('happyhour')"><span class="nav-icon">☀</span><span class="nav-copy"><strong>Happy Hour</strong><small>Sonderpreise 10–11 Uhr</small></span></button>
             <button type="button" class="nav-button" data-admin-page="aufladen" onclick="showAdminPage('aufladen')"><span class="nav-icon">€</span><span class="nav-copy"><strong>Aufladen</strong><small>PayPal-Funktion</small></span></button>
             <button type="button" class="nav-button" data-admin-page="abrechnung" onclick="showAdminPage('abrechnung')"><span class="nav-icon">▤</span><span class="nav-copy"><strong>Abrechnung</strong><small>Kaffee-Spenden</small></span></button>
             <button type="button" class="nav-button" data-admin-page="nachricht" onclick="showAdminPage('nachricht')"><span class="nav-icon">📢</span><span class="nav-copy"><strong>Nachricht an alle</strong><small>Mitteilung veröffentlichen</small></span></button>
@@ -228,6 +229,38 @@
                 </div>
             </section>
 
+            <section class="page-panel" data-admin-panel="happyhour" hidden>
+                <div class="content-card">
+                    <h2>☀ Happy Hour – Sonderaktion</h2>
+                    <p class="small-note" style="margin-top:-5px;">Die Aktion gilt nur am ausgewählten Datum von 10:00 bis 11:00 Uhr (deutsche Zeit). Sie startet automatisch, wenn sie vorher aktiviert und veröffentlicht wurde. Nach 11:00 Uhr gelten wieder die normalen Sortimentspreise. Zum vorzeitigen Beenden den Aktiv-Schalter ausschalten und speichern.</p>
+                    <div class="form-group">
+                        <label for="happyHourDate">Aktionstag:</label>
+                        <input type="date" id="happyHourDate">
+                    </div>
+                    <div class="form-group flex-group">
+                        <label class="switch"><input type="checkbox" id="happyHourActive"><span class="slider"></span></label>
+                        <span>Happy Hour für diesen Tag aktivieren</span>
+                    </div>
+                    <div id="happyHourPreview" class="settlement-preview">Happy Hour ist nicht aktiviert.</div>
+                </div>
+                <div class="content-card">
+                    <h2>🛒 Aktionsartikel und Sonderpreise</h2>
+                    <p class="small-note" style="margin-top:-5px;margin-bottom:13px;">Artikel auswählen und für jeden ausgewählten Artikel einen Happy-Hour-Preis eintragen. 0,00 € ist als Gratisaktion möglich. Das Freitagsfrühstück ist bewusst ausgeschlossen.</p>
+                    <div class="price-grid">
+                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_kaffee"><span class="slider"></span></label><label for="hhp_kaffee">☕ Kaffee</label><input type="number" id="hhp_kaffee" min="0" max="100" step="0.01" placeholder="€"></div>
+                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_cappuccino"><span class="slider"></span></label><label for="hhp_cappuccino">🥛 Cappuccino</label><input type="number" id="hhp_cappuccino" min="0" max="100" step="0.01" placeholder="€"></div>
+                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_wasser"><span class="slider"></span></label><label for="hhp_wasser">💧 Wasser 0,7L</label><input type="number" id="hhp_wasser" min="0" max="100" step="0.01" placeholder="€"></div>
+                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_soft33"><span class="slider"></span></label><label for="hhp_soft33">🥤 Softdrink 0,33L</label><input type="number" id="hhp_soft33" min="0" max="100" step="0.01" placeholder="€"></div>
+                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_soft5"><span class="slider"></span></label><label for="hhp_soft5">🥤 Softdrink 0,5L</label><input type="number" id="hhp_soft5" min="0" max="100" step="0.01" placeholder="€"></div>
+                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_schokokl"><span class="slider"></span></label><label for="hhp_schokokl">🍫 Schokoriegel klein</label><input type="number" id="hhp_schokokl" min="0" max="100" step="0.01" placeholder="€"></div>
+                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_schokogr"><span class="slider"></span></label><label for="hhp_schokogr">🍫 Schokoriegel groß</label><input type="number" id="hhp_schokogr" min="0" max="100" step="0.01" placeholder="€"></div>
+                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_eis"><span class="slider"></span></label><label for="hhp_eis">🍦 Eiscreme</label><input type="number" id="hhp_eis" min="0" max="100" step="0.01" placeholder="€"></div>
+                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_sonderartikel"><span class="slider"></span></label><label id="happyHourSpecialLabel" for="hhp_sonderartikel">⭐ Sonderartikel</label><input type="number" id="hhp_sonderartikel" min="0" max="100" step="0.01" placeholder="€"></div>
+                    </div>
+                    <p class="small-note">Die Sonderpreise werden nur während des ausgewählten Zeitfensters verwendet. Danach setzt die Kassen-App automatisch wieder die normalen Preise ein.</p>
+                </div>
+            </section>
+
             <section class="page-panel" data-admin-panel="aufladen" hidden>
                 <div class="content-card">
                     <h2>💳 PayPal-Aufladung</h2>
@@ -322,6 +355,7 @@
         overview: { title: "Übersicht", description: "Status, Zugang und zentrale Speicherfunktion deiner Kaffeekasse." },
         emailkontingent: { title: "E-Mail-Kontingent", description: "Monatlicher E-Mail-Verbrauch und automatische Funktionssperre." },
         sortiment: { title: "Sortiment", description: "Produkte sichtbar schalten und Verkaufspreise bearbeiten." },
+        happyhour: { title: "Happy Hour", description: "Einmalige Sonderaktion für ausgewählte Artikel von 10:00 bis 11:00 Uhr." },
         aufladen: { title: "Aufladen", description: "Die PayPal-Aufladung in der Kassen-App verwalten." },
         abrechnung: { title: "Abrechnung", description: "Kaffee-Spenden-Abrechnungen verwalten und erneut zustellen." },
         nachricht: { title: "Nachricht an alle", description: "Mitteilungen und Warnungen für alle Teilnehmer veröffentlichen." },
@@ -491,6 +525,22 @@
             const specialPrice = Number(special.preis);
             document.getElementById("specialProductPrice").value = Number.isFinite(specialPrice) && specialPrice >= 0.01 && specialPrice <= 100 ? specialPrice.toFixed(2) : "1.00";
 
+            const happyHour = config.happyHour || {};
+            document.getElementById("happyHourActive").checked = happyHour.aktiv === true;
+            document.getElementById("happyHourDate").value = /^\\d{4}-\\d{2}-\\d{2}$/.test(String(happyHour.datum || "")) ? happyHour.datum : berlinDateString();
+            const happyHourItems = happyHour.artikel || {};
+            const happyHourMapping = { kaffee:"btn-kaffee", cappuccino:"btn-cappuccino", wasser:"btn-wasser", soft33:"btn-soft33", soft5:"btn-soft5", schokokl:"btn-schokokl", schokogr:"btn-schokogr", eis:"btn-eis", sonderartikel:"btn-sonderartikel" };
+            for (const [key, productId] of Object.entries(happyHourMapping)) {
+                const value = happyHourItems[productId];
+                const enabled = value !== undefined && Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100;
+                document.getElementById("hh_" + key).checked = enabled;
+                document.getElementById("hhp_" + key).value = enabled ? Number(value).toFixed(2) : "";
+            }
+            const specialCheckbox = document.getElementById("hh_sonderartikel");
+            specialCheckbox.disabled = !Boolean(special.aktiv);
+            document.getElementById("happyHourSpecialLabel").textContent = special.aktiv && special.name ? "⭐ " + String(special.name).slice(0, 40) : "⭐ Sonderartikel (nicht aktiv)";
+            updateHappyHourPreview();
+
             configLoaded = true;
             const saveButton = document.querySelector(".btn-save");
             saveButton.disabled = false;
@@ -618,7 +668,30 @@
             if (!Number.isFinite(specialProductPrice) || specialProductPrice < 0.01 || specialProductPrice > 100) {
                 throw new Error("Bitte für den Sonderartikel einen Preis zwischen 0,01 und 100,00 € eintragen.");
             }
+            const happyHourDate = document.getElementById("happyHourDate").value;
+            if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(happyHourDate) || Number.isNaN(new Date(happyHourDate + "T12:00:00").getTime())) {
+                throw new Error("Bitte einen gültigen Happy-Hour-Aktionstag auswählen.");
+            }
+            const happyHourArticles = {};
+            const happyHourMapping = { kaffee:"btn-kaffee", cappuccino:"btn-cappuccino", wasser:"btn-wasser", soft33:"btn-soft33", soft5:"btn-soft5", schokokl:"btn-schokokl", schokogr:"btn-schokogr", eis:"btn-eis", sonderartikel:"btn-sonderartikel" };
+            for (const [key, productId] of Object.entries(happyHourMapping)) {
+                if (!document.getElementById("hh_" + key).checked) continue;
+                if (key === "sonderartikel" && !specialProductActive) throw new Error("Der Sonderartikel muss zuerst im Sortiment aktiviert werden.");
+                const value = Number(document.getElementById("hhp_" + key).value);
+                if (!Number.isFinite(value) || value < 0 || value > 100) throw new Error("Bitte für jeden ausgewählten Happy-Hour-Artikel einen Preis zwischen 0,00 und 100,00 € eintragen.");
+                happyHourArticles[productId] = Math.round(value * 100) / 100;
+            }
+            const happyHourActive = document.getElementById("happyHourActive").checked;
+            if (happyHourActive && Object.keys(happyHourArticles).length === 0) throw new Error("Bitte mindestens einen Artikel für die Happy Hour auswählen.");
+
             updatedConfig = {
+                happyHour: {
+                    aktiv: happyHourActive,
+                    datum: happyHourDate,
+                    start: "10:00",
+                    ende: "11:00",
+                    artikel: happyHourArticles
+                },
                 sonderartikel: {
                     aktiv: specialProductActive,
                     name: specialProductName,
@@ -730,6 +803,27 @@
             saveButton.disabled = false;
             saveButton.textContent = "💾 Speichern & Live schalten";
         }
+    }
+
+    function berlinDateString(date = new Date()) {
+        const parts = new Intl.DateTimeFormat("en-GB", { timeZone:"Europe/Berlin", year:"numeric", month:"2-digit", day:"2-digit" }).formatToParts(date);
+        const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+        return values.year + "-" + values.month + "-" + values.day;
+    }
+
+    function updateHappyHourPreview() {
+        const active = document.getElementById("happyHourActive")?.checked === true;
+        const date = document.getElementById("happyHourDate")?.value || "";
+        const preview = document.getElementById("happyHourPreview");
+        if (!preview) return;
+        if (!active) {
+            preview.textContent = "Happy Hour ist ausgeschaltet. Es gelten immer die normalen Sortimentspreise.";
+            return;
+        }
+        const selected = Object.entries({ kaffee:"Kaffee", cappuccino:"Cappuccino", wasser:"Wasser", soft33:"Softdrink 0,33L", soft5:"Softdrink 0,5L", schokokl:"Schokoriegel klein", schokogr:"Schokoriegel groß", eis:"Eiscreme", sonderartikel:"Sonderartikel" })
+            .filter(([key]) => document.getElementById("hh_" + key)?.checked)
+            .map(([, label]) => label);
+        preview.textContent = "Vorbereitet für " + (date || "noch kein Datum") + " · 10:00–11:00 Uhr · " + (selected.length ? selected.join(", ") : "Noch keine Artikel ausgewählt");
     }
 
     function localDateString(date = new Date()) {
@@ -906,6 +1000,10 @@
         ["birthdayCoffeeCount", "p_kaffee"].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener("input", updateBirthdaySettlementPreview);
+        });
+        ["happyHourActive", "happyHourDate", "hh_kaffee", "hh_cappuccino", "hh_wasser", "hh_soft33", "hh_soft5", "hh_schokokl", "hh_schokogr", "hh_eis", "hh_sonderartikel"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener("change", updateHappyHourPreview);
         });
         const birthdayDateInput = document.getElementById("freeCoffeeDate");
         if (birthdayDateInput) birthdayDateInput.addEventListener("change", () => {
