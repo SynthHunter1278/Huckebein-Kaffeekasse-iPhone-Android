@@ -10,8 +10,10 @@
       "anzahl": 12,
       "einzelpreis": 0.5,
       "gesamt": 6,
-      "status": "offen",
-      "erstellt": "2026-11-17T18:34:56.054Z"
+      "status": "bestätigt",
+      "erstellt": "2026-11-17T18:34:56.054Z",
+      "bestaetigtVon": "Admin – Zahlung und lokale Abbuchung bestätigt",
+      "bestaetigungQuelle": "Manuell im Repository bestätigt"
     },
     "aktionsId": "KAFFEE-20261117-182515-6-B18U14",
     "sperreBis": "2026-11-18T06:00:00+01:00",
