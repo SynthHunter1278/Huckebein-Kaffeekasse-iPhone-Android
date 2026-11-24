@@ -149,6 +149,10 @@ button { -webkit-tap-highlight-color:transparent; }
 }
 .birthday-title { font-size:19px; line-height:1.25; font-weight:900; letter-spacing:.025em; }
 .birthday-detail { margin-top:6px; color:#c5f7e4; font-size:14px; line-height:1.4; font-weight:700; }
+#happyHourBanner { display:none; margin:0 0 12px; padding:13px 14px; border:2px solid #f4c542; border-radius:13px; background:linear-gradient(135deg,#59420f,#80601c); color:#fff8df; text-align:center; box-shadow:0 7px 18px rgba(0,0,0,.2); }
+#happyHourBanner strong { display:block; font-size:17px; letter-spacing:.05em; }
+#happyHourBanner span { display:block; margin-top:5px; font-size:12px; line-height:1.4; }
+.hh-price-note { margin-left:7px; padding:3px 6px; border-radius:6px; background:#f4c542; color:#172c3e; font-size:9px; font-weight:900; white-space:nowrap; }
 #birthdayBanner.blink-active { animation:birthdayBlink .75s steps(2,end) infinite; }
 @keyframes birthdayBlink {
   0%,100% { background:linear-gradient(135deg,#123e35,#175b48); border-color:#22c58a; }
@@ -640,6 +644,8 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         <div id="noNoticeHint" style="color:#a9c3d5;font-size:12px;line-height:1.4;">Zurzeit liegen keine aktuellen Meldungen vor.</div>
       </div>
 
+      <div id="happyHourBanner" role="status" aria-live="polite"><strong>☀ HAPPY HOUR – 10:00 BIS 11:00 UHR</strong><span id="happyHourBannerText">Heute gibt es ausgewählte Artikel zum Sonderpreis.</span></div>
+
       <div id="birthdayBanner" role="status" aria-live="polite">
         <div class="birthday-title">☕ HEUTE GIBT ES EINEN KAFFEE GRATIS!</div>
         <div id="birthdayText" class="birthday-detail">Heute spendiert ein Kollege einen Becher Kaffee für alle. Jeder Teilnehmer kann einmalig einen Becher kostenlos abholen.</div>
@@ -794,6 +800,10 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
 
     function updateClockInstruments() {
         const now = new Date();
+        if (typeof updateHappyHourDisplay === "function") {
+            updateHappyHourDisplay();
+            if (typeof applyPricesToButtons === "function") applyPricesToButtons();
+        }
         const weekday = new Intl.DateTimeFormat("de-DE", { weekday:"short" }).format(now).replace(/\./g, "").toUpperCase();
         const month = new Intl.DateTimeFormat("de-DE", { month:"short" }).format(now).replace(/\./g, "").toUpperCase();
         const day = document.getElementById("instrumentDay");
@@ -822,6 +832,8 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
     const DEFAULT_PRICES = { kaffee:0.50, cappuccino:0.60, wasser:0.60, soft33:0.90, soft5:0.90, schokokl:0.30, schokogr:0.60, eis:0.50, fruehstueck:4.00 };
     let prices = { ...DEFAULT_PRICES };
     let specialProduct = { aktiv:false, name:"", preis:0 };
+    let happyHourConfig = { aktiv:false, datum:"", start:"10:00", ende:"11:00", artikel:{} };
+    let pendingHappyHourPrice = false;
     let birthdayEvent = { aktiv: false, spender: "", datum: "", abrechnung: null };
     let birthdayCoffeeActive = false;
     let birthdaySettlement = null;
@@ -875,6 +887,39 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
 
     function normalizeUserName(value) {
         return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("de-DE");
+    }
+
+    function getBerlinDateTimeParts(date = new Date()) {
+        const parts = new Intl.DateTimeFormat("en-GB", { timeZone:"Europe/Berlin", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", hourCycle:"h23" }).formatToParts(date);
+        return Object.fromEntries(parts.map(part => [part.type, part.value]));
+    }
+
+    function isHappyHourActiveNow() {
+        if (!happyHourConfig || happyHourConfig.aktiv !== true) return false;
+        const parts = getBerlinDateTimeParts();
+        const today = parts.year + "-" + parts.month + "-" + parts.day;
+        const minutes = Number(parts.hour) * 60 + Number(parts.minute);
+        return happyHourConfig.datum === today && minutes >= 600 && minutes < 660;
+    }
+
+    function getHappyHourPrice(productId) {
+        if (!isHappyHourActiveNow() || !productId) return null;
+        const articles = happyHourConfig.artikel || {};
+        if (!Object.prototype.hasOwnProperty.call(articles, productId)) return null;
+        const value = Number(articles[productId]);
+        return Number.isFinite(value) && value >= 0 && value <= 100 ? Math.round(value * 100) / 100 : null;
+    }
+
+    function updateHappyHourDisplay() {
+        const banner = document.getElementById("happyHourBanner");
+        const bannerText = document.getElementById("happyHourBannerText");
+        const active = isHappyHourActiveNow();
+        if (banner) banner.style.display = active ? "block" : "none";
+        if (active && bannerText) {
+            const labels = { "btn-kaffee":"Kaffee", "btn-cappuccino":"Cappuccino", "btn-wasser":"Wasser", "btn-soft33":"Softdrink 0,33L", "btn-soft5":"Softdrink 0,5L", "btn-schokokl":"Schokoriegel klein", "btn-schokogr":"Schokoriegel groß", "btn-eis":"Eiscreme", "btn-sonderartikel":specialProduct.name || "Sonderartikel" };
+            const names = Object.keys(happyHourConfig.artikel || {}).map(id => labels[id]).filter(Boolean);
+            bannerText.textContent = names.length ? names.join(" · ") + " zum Aktionspreis" : "Ausgewählte Artikel zum Sonderpreis";
+        }
     }
 
     function isBirthdayEventToday() {
@@ -1211,6 +1256,14 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
                 name: specialName,
                 preis: specialPriceValid ? Math.round(specialPrice * 100) / 100 : 0
             };
+            const configuredHappyHour = config.happyHour || {};
+            const hhArticles = {};
+            const allowedHappyHourIds = [...Object.values(PRODUCT_IDS).filter(id => id !== "btn-fruehstueck"), "btn-sonderartikel"];
+            for (const id of allowedHappyHourIds) {
+                const value = Number(configuredHappyHour.artikel?.[id]);
+                if (Object.prototype.hasOwnProperty.call(configuredHappyHour.artikel || {}, id) && Number.isFinite(value) && value >= 0 && value <= 100) hhArticles[id] = Math.round(value * 100) / 100;
+            }
+            happyHourConfig = { aktiv: configuredHappyHour.aktiv === true, datum: /^\\d{4}-\\d{2}-\\d{2}$/.test(String(configuredHappyHour.datum || "")) ? configuredHappyHour.datum : "", start:"10:00", ende:"11:00", artikel:hhArticles };
             emailQuotaAllowed = isEmailQuotaAllowed(config.emailKontingent);
             paypalEnabled = Boolean(config.paypal?.aktiv ?? config.paypalEnabled ?? true) && emailQuotaAllowed;
             birthdayEvent = config.geburtstag || config.freeCoffee || { aktiv: false, spender: "", datum: "", abrechnung: null };
@@ -1312,6 +1365,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
 
             updateBirthdayTimeDisplay();
             scheduleBirthdayClockRefresh();
+            updateHappyHourDisplay();
             refreshBirthdaySponsorUi();
 
             const sub = document.getElementById("saldo-subtext");
@@ -1334,7 +1388,8 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         const keys = { "Automaten Kaffee":"kaffee", "Cappuccino":"cappuccino", "Wasser 0,7L":"wasser", "Softdrink 0,33L":"soft33", "Softdrink 0,5L":"soft5", "Schokoriegel klein":"schokokl", "Schokoriegel groß":"schokogr", "Eiscreme":"eis", "Freitagsfrühstück":"fruehstueck" };
         const key = keys[itemName];
         if (key === "kaffee" && isBirthdayFreeWindowNow() && !hasClaimedFreeCoffee()) return 0;
-        return key ? prices[key] : fallback;
+        const happyPrice = key ? getHappyHourPrice(PRODUCT_IDS[key]) : null;
+        return happyPrice !== null ? happyPrice : (key ? prices[key] : fallback);
     }
 
     function applyPricesToButtons() {
@@ -1343,9 +1398,18 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
             const button = document.getElementById(id);
             if (!button) continue;
             button.style.display = productVisibility[id] === false ? "none" : "";
-            const amount = key === "kaffee" && isBirthdayFreeWindowNow() && !hasClaimedFreeCoffee() ? 0 : prices[key];
+            const birthdayFree = key === "kaffee" && isBirthdayFreeWindowNow() && !hasClaimedFreeCoffee();
+            const happyPrice = getHappyHourPrice(id);
+            const amount = birthdayFree ? 0 : (happyPrice !== null ? happyPrice : prices[key]);
             const spans = button.querySelectorAll("span");
-            if (spans.length) spans[spans.length - 1].textContent = amount.toFixed(2).replace(".", ",") + " €";
+            if (spans.length) {
+                spans[spans.length - 1].textContent = amount.toFixed(2).replace(".", ",") + " €";
+                let badge = button.querySelector(".hh-price-note");
+                if (happyPrice !== null && !birthdayFree) {
+                    if (!badge) { badge = document.createElement("span"); badge.className = "hh-price-note"; spans[0].appendChild(badge); }
+                    badge.textContent = "HAPPY HOUR";
+                } else if (badge) badge.remove();
+            }
         }
         const breakfastButton = document.getElementById("btn-fruehstueck");
         const breakfastQuotaNotice = document.getElementById("breakfastQuotaNotice");
@@ -1359,7 +1423,16 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         const showSpecialProduct = Boolean(specialProduct.aktiv && specialProduct.name && specialProduct.preis >= 0.01);
         if (specialButton) specialButton.style.display = showSpecialProduct ? "" : "none";
         if (specialName && showSpecialProduct) specialName.textContent = "⭐ " + specialProduct.name;
-        if (specialPrice && showSpecialProduct) specialPrice.textContent = specialProduct.preis.toFixed(2).replace(".", ",") + " €";
+        if (specialPrice && showSpecialProduct) {
+            const hhSpecialPrice = getHappyHourPrice("btn-sonderartikel");
+            specialPrice.textContent = (hhSpecialPrice !== null ? hhSpecialPrice : specialProduct.preis).toFixed(2).replace(".", ",") + " €";
+            let badge = specialButton.querySelector(".hh-price-note");
+            if (hhSpecialPrice !== null) {
+                if (!badge) { badge = document.createElement("span"); badge.className = "hh-price-note"; specialName.appendChild(badge); }
+                badge.textContent = "HAPPY HOUR";
+            } else if (badge) badge.remove();
+        }
+        updateHappyHourDisplay();
 
         const paypalButton = document.getElementById("paypalButton");
         const paypalMenu = document.getElementById("paypalMenu");
@@ -1656,7 +1729,9 @@ function getCalendarWeek(date) {
                 : "E-Mail-Kontingent ausgeschöpft oder Status nicht aktuell. Diese Funktion ist vorübergehend gesperrt.", false);
             return false;
         }
-        amount = isSpecialProduct ? specialProduct.preis : getPriceForItem(itemName, amount);
+        const currentHappyHourPrice = getHappyHourPrice(productId);
+        pendingHappyHourPrice = currentHappyHourPrice !== null;
+        amount = isSpecialProduct ? (currentHappyHourPrice !== null ? currentHappyHourPrice : specialProduct.preis) : getPriceForItem(itemName, amount);
         if (meinSaldo < 0 && !birthdayFreeCoffee) {
             showStatus("Dein Guthaben ist im Minus. Bitte zuerst aufladen; Produktbuchungen sind gesperrt.", false);
             return false;
@@ -1699,7 +1774,9 @@ function getCalendarWeek(date) {
         document.getElementById('confirmOverlay').style.display = 'none';
 
         if (isConfirmed && pendingItemName && (pendingAmount > 0 || pendingBirthdayFreeCoffee)) {
-            if (pendingBirthdayFreeCoffee && !isBirthdayFreeWindowNow()) {
+            if (pendingHappyHourPrice && !isHappyHourActiveNow()) {
+                showStatus("Die Happy Hour ist inzwischen beendet. Bitte den Artikel zum aktuellen Preis erneut buchen.", false);
+            } else if (pendingBirthdayFreeCoffee && !isBirthdayFreeWindowNow()) {
                 showStatus("Die kostenlose Kaffeeaktion ist inzwischen beendet. Bitte den Kaffee zum normalen Preis erneut buchen.", false);
             } else if (pendingBirthdayFreeCoffee && hasClaimedFreeCoffee()) {
                 showStatus("Du hast deinen kostenlosen Becher für diese Aktion bereits abgerufen.", false);
@@ -1743,6 +1820,7 @@ function getCalendarWeek(date) {
         pendingItemName = "";
         pendingBirthdayFreeCoffee = false;
         pendingBirthdayCoffeeId = "";
+        pendingHappyHourPrice = false;
         window.pendingEmailTrigger = false;
     }
 
