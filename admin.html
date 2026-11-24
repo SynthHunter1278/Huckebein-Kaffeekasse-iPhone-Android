@@ -527,7 +527,7 @@
 
             const happyHour = config.happyHour || {};
             document.getElementById("happyHourActive").checked = happyHour.aktiv === true;
-            document.getElementById("happyHourDate").value = /^\\d{4}-\\d{2}-\\d{2}$/.test(String(happyHour.datum || "")) ? happyHour.datum : berlinDateString();
+            document.getElementById("happyHourDate").value = /^\d{4}-\d{2}-\d{2}$/.test(String(happyHour.datum || "")) ? happyHour.datum : berlinDateString();
             const happyHourItems = happyHour.artikel || {};
             const happyHourMapping = { kaffee:"btn-kaffee", cappuccino:"btn-cappuccino", wasser:"btn-wasser", soft33:"btn-soft33", soft5:"btn-soft5", schokokl:"btn-schokokl", schokogr:"btn-schokogr", eis:"btn-eis", sonderartikel:"btn-sonderartikel" };
             for (const [key, productId] of Object.entries(happyHourMapping)) {
@@ -669,7 +669,7 @@
                 throw new Error("Bitte für den Sonderartikel einen Preis zwischen 0,01 und 100,00 € eintragen.");
             }
             const happyHourDate = document.getElementById("happyHourDate").value;
-            if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(happyHourDate) || Number.isNaN(new Date(happyHourDate + "T12:00:00").getTime())) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(happyHourDate) || Number.isNaN(new Date(happyHourDate + "T12:00:00").getTime())) {
                 throw new Error("Bitte einen gültigen Happy-Hour-Aktionstag auswählen.");
             }
             const happyHourArticles = {};
