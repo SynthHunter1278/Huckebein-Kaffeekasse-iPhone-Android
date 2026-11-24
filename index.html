@@ -1731,7 +1731,7 @@ function getCalendarWeek(date) {
             return false;
         }
         const currentHappyHourPrice = getHappyHourPrice(productId);
-        pendingHappyHourPrice = currentHappyHourPrice !== null;
+        pendingHappyHourPrice = currentHappyHourPrice !== null && !birthdayFreeCoffee;
         amount = isSpecialProduct ? (currentHappyHourPrice !== null ? currentHappyHourPrice : specialProduct.preis) : getPriceForItem(itemName, amount);
         if (meinSaldo < 0 && !birthdayFreeCoffee) {
             showStatus("Dein Guthaben ist im Minus. Bitte zuerst aufladen; Produktbuchungen sind gesperrt.", false);
