@@ -19,7 +19,7 @@
     "automatischFreigegeben": true
   },
   "nachricht": {
-    "aktiv": false,
+    "aktiv": true,
     "text": "Benutzt bitte eure App",
     "typ": "info"
   },
