@@ -1,8 +1,10 @@
 {
-  "last_uid": 724694,
+  "last_uid": 724695,
   "processed_ids": [
     "SPENDER-20261117172516-B18U14",
-    "SPENDER-20261120100146-SXZT5M"
+    "SPENDER-20261120100146-SXZT5M",
+    "SPENDER-20261124132627-SOCJHK"
   ],
-  "breakfast_cleanup_date": "2026-11-20"
+  "breakfast_cleanup_date": "2026-11-20",
+  "pending_requests": []
 }

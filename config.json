@@ -1,8 +1,8 @@
 {
   "geburtstag": {
-    "aktiv": false,
-    "spender": "Uwe",
-    "datum": "2026-11-17",
+    "aktiv": true,
+    "spender": "Uwe Töbermann",
+    "datum": "2026-11-24",
     "abrechnung": {
       "id": "KAFFEE-20261117-1794940496054",
       "spender": "Uwe",
@@ -15,9 +15,9 @@
       "bestaetigtVon": "Admin – Zahlung und lokale Abbuchung bestätigt",
       "bestaetigungQuelle": "Manuell im Repository bestätigt"
     },
-    "aktionsId": "KAFFEE-20261117-182515-6-B18U14",
-    "sperreBis": "2026-11-18T06:00:00+01:00",
-    "freigabeZeitpunkt": "2026-11-17T18:25:15+01:00",
+    "aktionsId": "KAFFEE-20261124-142629-7-SOCJHK",
+    "sperreBis": "2026-11-25T06:00:00+01:00",
+    "freigabeZeitpunkt": "2026-11-24T14:26:29+01:00",
     "automatischFreigegeben": true
   },
   "nachricht": {
