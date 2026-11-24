@@ -301,6 +301,46 @@ def search_relevant_uids(mail, last_uid):
         if value.isdigit() and int(value) > int(last_uid)
     ]
 
+def is_email_from_this_month(msg, now):
+    """Count one delivered Kaffeekassen notification in the current Berlin month."""
+    sender = parseaddr(msg.get("From", ""))[1].strip().casefold()
+    if sender != ALLOWED_SENDER:
+        return False
+    subject = decode_header_value(msg.get("Subject", ""))
+    if "KAFFEEKASSE" not in subject.upper():
+        return False
+    try:
+        sent_at = parsedate_to_datetime(msg.get("Date", ""))
+        if sent_at.tzinfo is None:
+            sent_at = sent_at.replace(tzinfo=TZ)
+        sent_at = sent_at.astimezone(TZ)
+    except Exception:
+        return False
+    return sent_at.year == now.year and sent_at.month == now.month
+
+
+def count_monthly_email_notifications(mail, now):
+    """Recount this month's delivered Kaffeekassen copies in Yahoo, not local device counters."""
+    status, data = mail.uid(
+        "search", None,
+        'OR SUBJECT "KAFFEEKASSE" TEXT "KAFFEEKASSE"'
+    )
+    if status != "OK":
+        raise RuntimeError("Yahoo-Postfach konnte nicht für den E-Mail-Zähler durchsucht werden")
+    total = 0
+    for raw_uid in data[0].split():
+        if not raw_uid.isdigit():
+            continue
+        fetch_status, fetched = mail.uid(
+            "fetch", raw_uid.decode("ascii"), "(BODY.PEEK[HEADER.FIELDS (FROM DATE SUBJECT)])"
+        )
+        if fetch_status != "OK" or not fetched or not isinstance(fetched[0], tuple):
+            raise RuntimeError(f"E-Mail-Kopfzeile UID {raw_uid.decode('ascii')} konnte nicht gelesen werden")
+        msg = email.message_from_bytes(fetched[0][1])
+        if is_email_from_this_month(msg, now):
+            total += 1
+    return total
+
 
 def commit_state():
     subprocess.run(["git", "config", "user.name", "github-actions[bot]"], cwd=ROOT, check=True)
@@ -348,6 +388,27 @@ def main():
         processed = set(state.get("processed_ids", []))
         changed = False
         sponsor_activated = False
+
+        # Monatlicher Zähler: vollständiger Abgleich mit den zugestellten
+        # Kaffeekassen-Kopien im Yahoo-Postfach, nicht mit Geräte-LocalStorage.
+        monthly_email_count = count_monthly_email_notifications(mail, now)
+        month_key = now.strftime("%Y-%m")
+        quota = config.get("emailKontingent")
+        if not isinstance(quota, dict):
+            quota = {}
+        updated_quota = {
+            "monat": month_key,
+            "anzahl": monthly_email_count,
+            "limit": 200,
+            "gesperrt": monthly_email_count >= 200,
+            "aktualisiert": now.isoformat(),
+            "quelle": "Yahoo-Postfach"
+        }
+        if quota != updated_quota:
+            config["emailKontingent"] = updated_quota
+            changed = True
+        print(f"E-Mail-Kontingent {month_key}: {monthly_email_count}/200"
+              + (" – gesperrt" if monthly_email_count >= 200 else ""))
 
         # Frühstücksliste jeden Freitag ab 12:00 Uhr (Europe/Berlin)
         # einmalig leeren. Der 5-Minuten-Zeitplan fängt auch verzögerte Läufe ab.
