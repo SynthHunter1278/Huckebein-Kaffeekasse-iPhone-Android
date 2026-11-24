@@ -493,6 +493,7 @@ def main():
                     "name": request["name"],
                     "requested_at": request_time.isoformat(),
                 })
+                changed = True
                 print(f"UID {uid}: offene Abrechnung vorhanden; Anmeldung wird zur späteren Prüfung vorgemerkt")
                 continue
             processed.add(request["request_id"])
@@ -562,6 +563,7 @@ def main():
                 processed.add(pending_id)
                 print(f"Vorgemerkte Anmeldung automatisch freigeschaltet: {pending.get('name', 'Unbekannt')} (Anmelde-ID {pending_id})")
                 sponsor_activated = True
+                changed = True
                 for later_pending in pending_requests[pending_index + 1:]:
                     if isinstance(later_pending, dict) and later_pending.get("request_id"):
                         processed.add(str(later_pending["request_id"]))
