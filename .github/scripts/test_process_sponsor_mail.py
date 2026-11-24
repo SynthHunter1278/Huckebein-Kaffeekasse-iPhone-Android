@@ -20,6 +20,23 @@ def make_mail(subject, body, sender="Toeber2000@yahoo.de"):
 
 
 class SponsorMailTests(unittest.TestCase):
+    def test_monthly_quota_counts_only_current_month_kasse_emails(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        now = datetime(2026, 11, 24, 12, 0, tzinfo=ZoneInfo("Europe/Berlin"))
+        current = make_mail(
+            "KAFFEEKASSE – FRÜHSTÜCKSBUCHUNG",
+            "item: Freitagsfrühstück",
+        )
+        current.replace_header("Date", "Tue, 24 Nov 2026 11:00:00 +0100")
+        previous = make_mail("KAFFEEKASSE – TEST", "item: test")
+        previous.replace_header("Date", "Sat, 31 Oct 2026 11:00:00 +0200")
+        unrelated = make_mail("Private Nachricht", "Hallo")
+        unrelated.replace_header("Date", "Tue, 24 Nov 2026 11:00:00 +0100")
+        self.assertTrue(sponsor_mail.is_email_from_this_month(current, now))
+        self.assertFalse(sponsor_mail.is_email_from_this_month(previous, now))
+        self.assertFalse(sponsor_mail.is_email_from_this_month(unrelated, now))
+
     def test_sender_is_parsed_and_normalized(self):
         msg = make_mail("Test", "Text")
         self.assertEqual(
