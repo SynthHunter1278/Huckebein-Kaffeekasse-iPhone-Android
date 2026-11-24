@@ -396,16 +396,33 @@ def main():
         quota = config.get("emailKontingent")
         if not isinstance(quota, dict):
             quota = {}
-        updated_quota = {
-            "monat": month_key,
-            "anzahl": monthly_email_count,
-            "limit": 200,
-            "gesperrt": monthly_email_count >= 200,
-            "aktualisiert": now.isoformat(),
-            "quelle": "Yahoo-Postfach"
-        }
-        if quota != updated_quota:
-            config["emailKontingent"] = updated_quota
+        quota_needs_refresh = (
+            quota.get("monat") != month_key
+            or quota.get("anzahl") != monthly_email_count
+            or quota.get("limit") != 200
+            or quota.get("gesperrt") != (monthly_email_count >= 200)
+        )
+        last_quota_update = None
+        try:
+            last_quota_update = datetime.fromisoformat(str(quota.get("aktualisiert", "")))
+            if last_quota_update.tzinfo is None:
+                last_quota_update = last_quota_update.replace(tzinfo=TZ)
+            last_quota_update = last_quota_update.astimezone(TZ)
+        except (TypeError, ValueError):
+            quota_needs_refresh = True
+        # Heartbeat höchstens alle 12 Stunden, damit nicht alle fünf Minuten
+        # ein unnötiger Git-Commit erzeugt wird. Änderungen am Zähler sofort.
+        if last_quota_update is None or now - last_quota_update >= timedelta(hours=12):
+            quota_needs_refresh = True
+        if quota_needs_refresh:
+            config["emailKontingent"] = {
+                "monat": month_key,
+                "anzahl": monthly_email_count,
+                "limit": 200,
+                "gesperrt": monthly_email_count >= 200,
+                "aktualisiert": now.isoformat(),
+                "quelle": "Yahoo-Postfach"
+            }
             changed = True
         print(f"E-Mail-Kontingent {month_key}: {monthly_email_count}/200"
               + (" – gesperrt" if monthly_email_count >= 200 else ""))
