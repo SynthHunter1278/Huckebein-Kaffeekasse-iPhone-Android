@@ -330,6 +330,9 @@ def main():
         free_coffee_log = {"entries": []}
     birthday = config.setdefault("geburtstag", {})
     now = datetime.now(TZ)
+    pending_requests = state.get("pending_requests", [])
+    if not isinstance(pending_requests, list):
+        pending_requests = []
 
     mail = imaplib.IMAP4_SSL("imap.mail.yahoo.com", 993)
     try:
@@ -344,6 +347,7 @@ def main():
             print(f"{len(uids)} passende Kaffeekassen-Nachrichten seit dem letzten Lauf gefunden.")
         processed = set(state.get("processed_ids", []))
         changed = False
+        sponsor_activated = False
 
         # Frühstücksliste jeden Freitag ab 12:00 Uhr (Europe/Berlin)
         # einmalig leeren. Der 5-Minuten-Zeitplan fängt auch verzögerte Läufe ab.
@@ -448,18 +452,22 @@ def main():
             if not request:
                 print(f"UID {uid}: ignoriert ({reason})")
                 continue
-            if request["request_id"] in processed:
-                print(f"UID {uid}: doppelte Anmelde-ID ignoriert")
+            if request["request_id"] in processed or any(
+                str(item.get("request_id")) == request["request_id"]
+                for item in pending_requests if isinstance(item, dict)
+            ):
+                print(f"UID {uid}: doppelte oder bereits vorgemerkte Anmelde-ID ignoriert")
                 continue
-            processed.add(request["request_id"])
             request_time = request["requested_at"]
             # Nur Anmeldungen, die tatsächlich zwischen 06:00 und 15:00 Uhr eingingen.
             if not is_signup_time_valid(request_time, now):
+                processed.add(request["request_id"])
                 print(f"UID {uid}: außerhalb des Anmeldezeitfensters")
                 continue
             # Ein verspäteter GitHub-Start darf eine rechtzeitig eingegangene Anmeldung
             # nicht verwerfen. Die Zeit des tatsächlichen Antrags ist maßgeblich.
             if now.date() != request_time.date():
+                processed.add(request["request_id"])
                 print(f"UID {uid}: Anmeldung gehört zu einem anderen Kalendertag")
                 continue
             lock_raw = birthday.get("sperreBis", "")
@@ -475,12 +483,19 @@ def main():
                 except ValueError:
                     lock_until = None
             if lock_until and lock_until > now:
+                processed.add(request["request_id"])
                 print(f"UID {uid}: Sperre bis {lock_until.isoformat()} aktiv")
                 continue
             settlement = birthday.get("abrechnung") or {}
             if settlement.get("status") == "offen":
-                print(f"UID {uid}: offene Abrechnung vorhanden; keine neue Aktion wird gestartet")
+                pending_requests.append({
+                    "request_id": request["request_id"],
+                    "name": request["name"],
+                    "requested_at": request_time.isoformat(),
+                })
+                print(f"UID {uid}: offene Abrechnung vorhanden; Anmeldung wird zur späteren Prüfung vorgemerkt")
                 continue
+            processed.add(request["request_id"])
             # Der bestehende Abrechnungseintrag bleibt unangetastet.
             next_morning = datetime.combine(request_time.date() + timedelta(days=1), START, TZ)
             birthday.update({
@@ -493,9 +508,67 @@ def main():
                 "automatischFreigegeben": True
             })
             print(f"Freigeschaltet: {request['name']} (Anmelde-ID {request['request_id']})")
+            sponsor_activated = True
             # Nur eine Anfrage je Sperrfenster freischalten.
             break
 
+        # Vorgemerkte Anmeldungen erneut prüfen, sobald die offene Abrechnung erledigt ist.
+        if pending_requests and not sponsor_activated:
+            remaining_pending = []
+            for pending_index, pending in enumerate(pending_requests):
+                if not isinstance(pending, dict):
+                    continue
+                pending_id = str(pending.get("request_id", ""))
+                if not pending_id or pending_id in processed:
+                    continue
+                try:
+                    pending_time = datetime.fromisoformat(str(pending.get("requested_at", "")))
+                    if pending_time.tzinfo is None:
+                        pending_time = pending_time.replace(tzinfo=TZ)
+                except ValueError:
+                    processed.add(pending_id)
+                    continue
+                if not is_signup_time_valid(pending_time, now) or now.date() != pending_time.date():
+                    processed.add(pending_id)
+                    continue
+                lock_raw = birthday.get("sperreBis", "")
+                try:
+                    lock_until = datetime.fromisoformat(lock_raw.replace("Z", "+00:00")).astimezone(TZ) if lock_raw else None
+                except ValueError:
+                    lock_until = None
+                if not lock_until and bool(birthday.get("aktiv", birthday.get("active", False))) and birthday.get("datum"):
+                    try:
+                        event_day = datetime.strptime(birthday["datum"], "%Y-%m-%d").date()
+                        lock_until = datetime.combine(event_day + timedelta(days=1), START, TZ)
+                    except ValueError:
+                        lock_until = None
+                if lock_until and lock_until > now:
+                    processed.add(pending_id)
+                    continue
+                settlement = birthday.get("abrechnung") or {}
+                if settlement.get("status") == "offen":
+                    remaining_pending.append(pending)
+                    continue
+                next_morning = datetime.combine(pending_time.date() + timedelta(days=1), START, TZ)
+                birthday.update({
+                    "aktiv": True,
+                    "spender": str(pending.get("name", "Unbekannter Teilnehmer")),
+                    "datum": pending_time.date().isoformat(),
+                    "aktionsId": "KAFFEE-" + pending_time.strftime("%Y%m%d-%H%M%S") + "-" + pending_id[-8:],
+                    "sperreBis": next_morning.isoformat(),
+                    "freigabeZeitpunkt": pending_time.isoformat(),
+                    "automatischFreigegeben": True
+                })
+                processed.add(pending_id)
+                print(f"Vorgemerkte Anmeldung automatisch freigeschaltet: {pending.get('name', 'Unbekannt')} (Anmelde-ID {pending_id})")
+                sponsor_activated = True
+                for later_pending in pending_requests[pending_index + 1:]:
+                    if isinstance(later_pending, dict) and later_pending.get("request_id"):
+                        processed.add(str(later_pending["request_id"]))
+                break
+            pending_requests = remaining_pending if not sponsor_activated else []
+
+        state["pending_requests"] = pending_requests
         state["processed_ids"] = sorted(processed)[-1000:]
         if changed:
             CONFIG.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
