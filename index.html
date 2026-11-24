@@ -684,6 +684,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
           <button id="btn-fruehstueck" class="btn btn-fruehstueck" onclick="book(4.00, 'Freitagsfrühstück', true)">
             <span class="product-label">🥐 Freitagsfrühstück <span id="fruehstueckBadge" class="fruehstueck-badge"></span></span><span class="product-price">4,00 €</span>
           </button>
+          <div id="breakfastQuotaNotice" style="display:none;padding:13px 14px;border:1px solid #d6a83b;border-radius:11px;background:#4a3a18;color:#fff1c2;font-size:13px;font-weight:800;line-height:1.4;">Heute Frühstücksanmeldung persönlich beim Kassenwart.</div>
           <button id="btn-sonderartikel" class="btn btn-special" type="button" style="display:none" onclick="bookSpecialProduct()">
             <span id="sonderartikelName">⭐ Sonderartikel</span><span id="sonderartikelPrice" class="product-price">0,00 €</span>
           </button>
@@ -847,6 +848,18 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
     };
     let productVisibility = Object.fromEntries(Object.values(PRODUCT_IDS).map(id => [id, true]));
     let paypalEnabled = true;
+    let emailQuotaAllowed = false;
+
+    function isEmailQuotaAllowed(quota) {
+        if (!quota || typeof quota !== "object") return false;
+        const currentMonth = localDateString().slice(0, 7);
+        const updatedAt = Date.parse(quota.aktualisiert || "");
+        const fresh = Number.isFinite(updatedAt) && updatedAt <= Date.now() + 5 * 60 * 1000
+            && Date.now() - updatedAt <= 24 * 60 * 60 * 1000;
+        return quota.monat === currentMonth && fresh
+            && Number(quota.limit) === 200 && Number(quota.anzahl) < 200
+            && quota.gesperrt !== true;
+    }
 
     let meinSaldo = 0.00;
     let usedCodes = [];
@@ -1198,7 +1211,8 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
                 name: specialName,
                 preis: specialPriceValid ? Math.round(specialPrice * 100) / 100 : 0
             };
-            paypalEnabled = Boolean(config.paypal?.aktiv ?? config.paypalEnabled ?? true);
+            emailQuotaAllowed = isEmailQuotaAllowed(config.emailKontingent);
+            paypalEnabled = Boolean(config.paypal?.aktiv ?? config.paypalEnabled ?? true) && emailQuotaAllowed;
             birthdayEvent = config.geburtstag || config.freeCoffee || { aktiv: false, spender: "", datum: "", abrechnung: null };
             birthdayCoffeeActive = isBirthdayEventToday();
             birthdaySettlement = birthdayEvent.abrechnung || null;
@@ -1306,7 +1320,10 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
             }
             return true;
         } catch (e) {
-            console.warn("Konfiguration konnte nicht geladen werden; bisherige Preise bleiben erhalten:", e);
+            emailQuotaAllowed = false;
+            paypalEnabled = false;
+            console.warn("Konfiguration konnte nicht geladen werden; E-Mail-abhängige Funktionen bleiben vorsorglich gesperrt:", e);
+            refreshBirthdaySponsorUi();
             return false;
         } finally {
             applyPricesToButtons();
@@ -1330,6 +1347,12 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
             const spans = button.querySelectorAll("span");
             if (spans.length) spans[spans.length - 1].textContent = amount.toFixed(2).replace(".", ",") + " €";
         }
+        const breakfastButton = document.getElementById("btn-fruehstueck");
+        const breakfastQuotaNotice = document.getElementById("breakfastQuotaNotice");
+        const breakfastVisible = productVisibility["btn-fruehstueck"] !== false;
+        if (breakfastButton) breakfastButton.style.display = breakfastVisible && emailQuotaAllowed ? "" : "none";
+        if (breakfastQuotaNotice) breakfastQuotaNotice.style.display = breakfastVisible && !emailQuotaAllowed ? "block" : "none";
+
         const specialButton = document.getElementById("btn-sonderartikel");
         const specialName = document.getElementById("sonderartikelName");
         const specialPrice = document.getElementById("sonderartikelPrice");
@@ -1627,6 +1650,12 @@ function getCalendarWeek(date) {
             return false;
         }
         const birthdayFreeCoffee = !isSpecialProduct && itemName === "Automaten Kaffee" && isBirthdayFreeWindowNow() && !hasClaimedFreeCoffee();
+        if ((birthdayFreeCoffee || itemName === "Freitagsfrühstück" || triggerEmail) && !emailQuotaAllowed) {
+            showStatus(itemName === "Freitagsfrühstück"
+                ? "Heute Frühstücksanmeldung persönlich beim Kassenwart."
+                : "E-Mail-Kontingent ausgeschöpft oder Status nicht aktuell. Diese Funktion ist vorübergehend gesperrt.", false);
+            return false;
+        }
         amount = isSpecialProduct ? specialProduct.preis : getPriceForItem(itemName, amount);
         if (meinSaldo < 0 && !birthdayFreeCoffee) {
             showStatus("Dein Guthaben ist im Minus. Bitte zuerst aufladen; Produktbuchungen sind gesperrt.", false);
@@ -1738,7 +1767,11 @@ function getCalendarWeek(date) {
         try { alreadySent = localStorage.getItem(key) === "1"; } catch (_) {}
         const lockUntil = getBirthdaySponsorLockUntil();
         const lockActive = Boolean(lockUntil && lockUntil.getTime() > Date.now());
-        if (lockActive) {
+        if (!emailQuotaAllowed) {
+            button.disabled = true;
+            button.textContent = "Kaffeeaktion vorübergehend gesperrt";
+            status.textContent = "Das E-Mail-Kontingent ist ausgeschöpft oder der zentrale Status nicht aktuell.";
+        } else if (lockActive) {
             button.disabled = true;
             button.textContent = "Kaffeeaktion bereits vergeben";
             status.textContent = "Die Spenderanmeldung ist bereits vergeben. Neue Anmeldungen sind wieder ab " +
@@ -1759,6 +1792,11 @@ function getCalendarWeek(date) {
         const status = document.getElementById("birthdaySponsorStatus");
         if (!isBirthdaySponsorRequestWindowNow()) {
             showStatus("Spenderanmeldungen sind nur zwischen 06:00 und 15:00 Uhr möglich.", false);
+            return;
+        }
+        if (!emailQuotaAllowed) {
+            showStatus("E-Mail-Kontingent ausgeschöpft oder zentraler Status nicht aktuell. Kaffee spendieren ist vorübergehend gesperrt.", false);
+            refreshBirthdaySponsorUi();
             return;
         }
         button.disabled = true;
