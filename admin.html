@@ -117,6 +117,7 @@
         <div class="nav-label">VERWALTUNG</div>
         <nav class="admin-nav" aria-label="Admin-Bereiche">
             <button type="button" class="nav-button active" data-admin-page="overview" onclick="showAdminPage('overview')"><span class="nav-icon">⌂</span><span class="nav-copy"><strong>Übersicht</strong><small>Status & Zugang</small></span></button>
+            <button type="button" class="nav-button" data-admin-page="emailkontingent" onclick="showAdminPage('emailkontingent')"><span class="nav-icon">✉</span><span class="nav-copy"><strong>E-Mail-Kontingent</strong><small>Monatsverbrauch</small></span></button>
             <button type="button" class="nav-button" data-admin-page="sortiment" onclick="showAdminPage('sortiment')"><span class="nav-icon">☕</span><span class="nav-copy"><strong>Sortiment</strong><small>Produkte & Preise</small></span></button>
             <button type="button" class="nav-button" data-admin-page="aufladen" onclick="showAdminPage('aufladen')"><span class="nav-icon">€</span><span class="nav-copy"><strong>Aufladen</strong><small>PayPal-Funktion</small></span></button>
             <button type="button" class="nav-button" data-admin-page="abrechnung" onclick="showAdminPage('abrechnung')"><span class="nav-icon">▤</span><span class="nav-copy"><strong>Abrechnung</strong><small>Kaffee-Spenden</small></span></button>
@@ -157,6 +158,21 @@
                     <span class="logout-link" onclick="changeCredentials()">GitHub-Token ändern</span>
         <span class="logout-link" onclick="clearCredentials()">Gespeicherten Token löschen / abmelden</span>
         <p style="font-size:12px;color:#cbd5e1;line-height:1.45;text-align:center;">Der GitHub-Token wird auf diesem Gerät in diesem Browser gespeichert. Auf PC, Android und iPhone muss er jeweils einmal eingegeben werden. Für das Speichern wird ein Fine-grained Token mit Contents: Read and write benötigt.</p>
+                </div>
+            </section>
+
+            <section class="page-panel" data-admin-panel="emailkontingent" hidden>
+                <div class="content-card">
+                    <h2>✉ Monatliches E-Mail-Kontingent</h2>
+                    <div class="overview-grid">
+                        <div class="overview-tile"><strong>Verbrauch im laufenden Monat</strong><span id="emailQuotaCount">Wird geladen …</span></div>
+                        <div class="overview-tile"><strong>Verbleibend</strong><span id="emailQuotaRemaining">Wird geladen …</span></div>
+                        <div class="overview-tile"><strong>Kontingentstatus</strong><span id="emailQuotaStatus">Wird geladen …</span></div>
+                        <div class="overview-tile"><strong>Letzte Aktualisierung</strong><span id="emailQuotaUpdated">Wird geladen …</span></div>
+                    </div>
+                    <button type="button" class="btn-resend" onclick="loadCurrentConfig()">↻ Kontingentstatus aktualisieren</button>
+                    <p class="small-note">Gezählt werden die im Yahoo-Postfach eingegangenen Kaffeekassen-E-Mail-Kopien des aktuellen Monats. Die Prüfung läuft automatisch etwa alle fünf Minuten. Bei 200 E-Mails werden PayPal-Aufladung, Kaffee-Spenden-Anmeldung, Gratis-Kaffee und Frühstücksanmeldung in der Kassen-App gesperrt. Bar-Aufladecodes und normale Produktkäufe bleiben verfügbar.</p>
+                    <p class="small-note">Hinweis: Das ist ein Postfach-Zähler, keine direkte Echtzeit-Abfrage des EmailJS-Kontos. Verzögerte oder fehlende E-Mail-Kopien können zu Abweichungen führen.</p>
                 </div>
             </section>
 
@@ -304,6 +320,7 @@
     // Navigation: Es wird immer nur ein Admin-Bereich angezeigt.
     const adminPageInfo = {
         overview: { title: "Übersicht", description: "Status, Zugang und zentrale Speicherfunktion deiner Kaffeekasse." },
+        emailkontingent: { title: "E-Mail-Kontingent", description: "Monatlicher E-Mail-Verbrauch und automatische Funktionssperre." },
         sortiment: { title: "Sortiment", description: "Produkte sichtbar schalten und Verkaufspreise bearbeiten." },
         aufladen: { title: "Aufladen", description: "Die PayPal-Aufladung in der Kassen-App verwalten." },
         abrechnung: { title: "Abrechnung", description: "Kaffee-Spenden-Abrechnungen verwalten und erneut zustellen." },
@@ -447,6 +464,26 @@
                 document.getElementById("v_" + key).checked = visibility[productId] !== false;
             }
             document.getElementById("paypalActive").checked = Boolean(config.paypal?.aktiv ?? config.paypalEnabled ?? true);
+
+            const quota = config.emailKontingent || {};
+            const quotaCount = Number.isFinite(Number(quota.anzahl)) ? Number(quota.anzahl) : null;
+            const quotaLimit = 200;
+            const quotaMonth = String(quota.monat || "");
+            const quotaCurrentMonth = new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0");
+            const quotaFresh = Number.isFinite(Date.parse(quota.aktualisiert || ""))
+                && Date.now() - Date.parse(quota.aktualisiert) <= 24 * 60 * 60 * 1000
+                && Date.parse(quota.aktualisiert) <= Date.now() + 5 * 60 * 1000;
+            document.getElementById("emailQuotaCount").textContent =
+                quotaMonth === quotaCurrentMonth && quotaCount !== null ? quotaCount + " / " + quotaLimit : "Noch kein aktueller Monatswert";
+            document.getElementById("emailQuotaRemaining").textContent =
+                quotaMonth === quotaCurrentMonth && quotaCount !== null ? Math.max(0, quotaLimit - quotaCount) + " E-Mails" : "—";
+            document.getElementById("emailQuotaStatus").textContent =
+                !quotaFresh || quotaMonth !== quotaCurrentMonth ? "Status nicht aktuell – Kassen-App sperrt E-Mail-Funktionen vorsorglich"
+                : quotaCount >= quotaLimit || quota.gesperrt === true ? "Limit erreicht – Funktionen gesperrt"
+                : "Freigegeben";
+            document.getElementById("emailQuotaUpdated").textContent =
+                quota.aktualisiert && Number.isFinite(Date.parse(quota.aktualisiert))
+                    ? new Date(quota.aktualisiert).toLocaleString("de-DE") : "Noch nicht vorhanden";
 
             const special = config.sonderartikel || {};
             document.getElementById("specialProductActive").checked = Boolean(special.aktiv);
