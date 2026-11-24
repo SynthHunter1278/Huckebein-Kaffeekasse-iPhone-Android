@@ -1410,6 +1410,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
                     badge.textContent = "HAPPY HOUR";
                 } else if (badge) badge.remove();
             }
+            updateButtonState(id, amount);
         }
         const breakfastButton = document.getElementById("btn-fruehstueck");
         const breakfastQuotaNotice = document.getElementById("breakfastQuotaNotice");
