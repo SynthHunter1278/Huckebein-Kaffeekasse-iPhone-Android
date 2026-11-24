@@ -1636,7 +1636,7 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
         updateButtonState('btn-schokogr', getPriceForItem('Schokoriegel groß', 0.60));
         updateButtonState('btn-eis', getPriceForItem('Eiscreme', 0.50));
         updateButtonState('btn-fruehstueck', getPriceForItem('Freitagsfrühstück', 4.00));
-        if (specialProduct.aktiv) updateButtonState('btn-sonderartikel', specialProduct.preis);
+        if (specialProduct.aktiv) updateButtonState('btn-sonderartikel', getHappyHourPrice("btn-sonderartikel") ?? specialProduct.preis);
 
         // Der alte, aus Guthaben und Datum ableitbare Sicherungscode wird nicht mehr angezeigt.
 
