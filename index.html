@@ -1774,7 +1774,7 @@ function getCalendarWeek(date) {
     function closeConfirm(isConfirmed) {
         document.getElementById('confirmOverlay').style.display = 'none';
 
-        if (isConfirmed && pendingItemName && (pendingAmount > 0 || pendingBirthdayFreeCoffee)) {
+        if (isConfirmed && pendingItemName && (pendingAmount > 0 || pendingBirthdayFreeCoffee || pendingHappyHourPrice)) {
             if (pendingHappyHourPrice && !isHappyHourActiveNow()) {
                 showStatus("Die Happy Hour ist inzwischen beendet. Bitte den Artikel zum aktuellen Preis erneut buchen.", false);
             } else if (pendingBirthdayFreeCoffee && !isBirthdayFreeWindowNow()) {
