@@ -549,7 +549,7 @@ def main():
                     "sponsor": parse_request(msg, uid)[1],
                     "recipient_match": is_message_for_account(msg, account)
                 }
-                body_keys = sorted(set(re.findall(r"(?i)\\b([a-z_]{2,30})\\s*[:=]", body_debug)))
+                body_keys = sorted(set(re.findall(r"(?i)\b([a-z_]{2,30})\s*[:=]", body_debug)))
                 print(f"DIAG UID {uid}: checks={checks} fields={fields_present} body_keys={body_keys} body_chars={len(body_debug)} results={results}")
                 continue
             # Nur Nachrichten mit Kaffeekassen-Bezug werden gesucht. Auch deren UID
