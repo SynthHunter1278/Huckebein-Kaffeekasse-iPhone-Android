@@ -222,8 +222,38 @@ class SponsorMailTests(unittest.TestCase):
                     b'(\\HasNoChildren) "/" "Archiv/Hans Huckebein Kaffeekasse"',
                 ]
 
-        with self.assertRaisesRegex(RuntimeError, "Mehrere passende Yahoo-Ordner"):
+            def select(self, mailbox_name, readonly=False):
+                return "OK", [b"1"]
+
+            def uid(self, *args):
+                return "OK", [b"12"]
+
+        with self.assertRaisesRegex(RuntimeError, "mehrere mögliche Kassenordner"):
             sponsor_mail.find_hans_huckebein_mailbox(FakeMail())
+
+    def test_find_hans_huckebein_mailbox_uses_only_populated_candidate(self):
+        class FakeMail:
+            selected = ""
+
+            def list(self):
+                return "OK", [
+                    b'(\\HasNoChildren) "/" "Hans Huckebein Kaffeekasse"',
+                    b'(\\HasNoChildren) "/" "Inbox/Hans Huckebein Kaffeekasse"',
+                ]
+
+            def select(self, mailbox_name, readonly=False):
+                self.selected = mailbox_name
+                return "OK", [b"1"]
+
+            def uid(self, *args):
+                if self.selected.startswith("Inbox/"):
+                    return "OK", [b""]
+                return "OK", [b"12"]
+
+        self.assertEqual(
+            sponsor_mail.find_hans_huckebein_mailbox(FakeMail()),
+            "Hans Huckebein Kaffeekasse",
+        )
 
     def test_find_hans_huckebein_mailbox_fails_with_folder_list_for_diagnosis(self):
         class FakeMail:
