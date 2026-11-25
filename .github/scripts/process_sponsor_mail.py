@@ -91,7 +91,7 @@ def parse_breakfast_booking(msg, uid):
     """Parse confirmed Friday-breakfast bookings sent by the participant app."""
     body = message_text(msg)
     subject = decode_header_value(msg.get("Subject", ""))
-    item = field(body, ["item", "Artikel", "Produkt"])
+    item = field(body, ["item", "Artikel", "Produkt", "Meldung / Buchung"])
     normalized = (subject + "\n" + item).upper().replace("Ü", "UE")
     if "FRUEHSTUECKSBUCHUNG" not in normalized and "FREITAGSFRUEHSTUECK" not in normalized:
         return None, "Keine Frühstücksbuchung"
@@ -101,7 +101,7 @@ def parse_breakfast_booking(msg, uid):
     if not name or name.lower() in ("anonymer teilnehmer", "unbekannter teilnehmer"):
         return None, "Teilnehmername fehlt"
 
-    stamp = field(body, ["timestamp", "Zeitstempel", "Datum"])
+    stamp = field(body, ["timestamp", "Zeitstempel", "Datum", "Zeitpunkt"])
     booking_time = None
     if stamp:
         for fmt in ("%d.%m.%Y, %H:%M:%S", "%d.%m.%Y, %H:%M", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M"):
@@ -144,7 +144,7 @@ def parse_free_coffee_redemption(msg, uid):
     if not action_match:
         return None, "Aktions-ID fehlt – keine zuordenbare Spendenaktion"
     action_id = action_match.group(1)
-    booking_id = field(body, ["notification_id", "Buchungsnummer", "Anmelde-ID"])
+    booking_id = field(body, ["notification_id", "Buchungsnummer", "Anmelde-ID", "Buchungs- bzw. Meldungsnummer"])
     stamp = field(body, ["timestamp", "Zeitstempel", "Datum"])
     redeemed_at = None
     if stamp:
