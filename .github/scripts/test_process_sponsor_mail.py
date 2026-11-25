@@ -153,6 +153,37 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(entry["amount"], 10.0)
         self.assertEqual(entry["status"], "BEZAHLT")
 
+
+    def test_paypal_emailjs_inline_message_from_real_example(self):
+        msg = make_mail(
+            "Neue PayPal-Aufladung eingegangen",
+            "Teilnehmer: KAFFEEKASSE – Uwe Töbermann – ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT\\n"
+            "Betrag: 10,00 € | user: KAFFEEKASSE – Uwe Töbermann – ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT "
+            "| timestamp: 25.11.2026, 19:45:07 | request_id: PP-1795632299184-GODZ3 EUR",
+        )
+        entry, reason = sponsor_mail.parse_paypal_decision(msg, 724552)
+        self.assertEqual(reason, "")
+        self.assertEqual(entry["name"], "Uwe Töbermann")
+        self.assertEqual(entry["amount"], 10.0)
+        self.assertEqual(entry["status"], "BEZAHLT")
+        self.assertEqual(entry["request_id"], "PP-1795632299184-GODZ3")
+        self.assertEqual(entry["id"], "PP-1795632299184-GODZ3")
+
+    def test_uidvalidity_is_read_from_selected_mailbox(self):
+        class FakeMail:
+            def response(self, name):
+                self.asserted_name = name
+                return "UIDVALIDITY", [b"724552"]
+
+        fake = FakeMail()
+        self.assertEqual(sponsor_mail.get_uidvalidity(fake), "724552")
+        self.assertEqual(fake.asserted_name, "UIDVALIDITY")
+
+    def test_paypal_log_deduplication_uses_request_id(self):
+        existing = {"id": "old-uid", "request_id": "PP-1795632299184-GODZ3"}
+        duplicate = {"id": "new-uid", "request_id": "PP-1795632299184-GODZ3"}
+        self.assertEqual(existing["request_id"], duplicate["request_id"])
+
     def test_paypal_not_paid_decision(self):
         msg = make_mail(
             "KAFFEEKASSE - PAYPAL-AUFLADUNG",
