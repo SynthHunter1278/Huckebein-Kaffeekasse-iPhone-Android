@@ -91,6 +91,16 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(entry["notification_id"], "BREAKFAST-123")
 
 
+    def test_unrelated_app_source_with_breakfast_keyword_is_not_a_booking(self):
+        msg = make_mail(
+            "KAFFEEKASSE – BUCHUNG",
+            "item: Automaten Kaffee, preis: 0.50 }\\n" +
+            "timestamp: 26.10.2026, 09:20:39\\n" +
+            "const FRUEHSTUECKSBUCHUNG = true; user: Testperson"
+        )
+        entry, reason = sponsor_mail.parse_breakfast_booking(msg, 778)
+        self.assertIsNone(entry)
+
     def test_free_coffee_redemption_during_sponsor_action(self):
         msg = make_mail(
             "☕ KAFFEEKASSE – KAFFEEAKTION – GRATISENTNAHME",

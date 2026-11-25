@@ -89,7 +89,7 @@ def parse_breakfast_booking(msg, uid):
     body = message_text(msg)
     subject = decode_header_value(msg.get("Subject", ""))
     item = field(body, ["item", "Artikel", "Produkt"])
-    normalized = (subject + "\n" + body).upper().replace("Ü", "UE")
+    normalized = (subject + "\n" + item).upper().replace("Ü", "UE")
     if "FRUEHSTUECKSBUCHUNG" not in normalized and "FREITAGSFRUEHSTUECK" not in normalized:
         return None, "Keine Frühstücksbuchung"
 
