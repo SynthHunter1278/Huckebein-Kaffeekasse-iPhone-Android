@@ -262,19 +262,20 @@ class SponsorMailTests(unittest.TestCase):
     def test_search_is_limited_to_coffee_kasse_messages(self):
         class FakeMail:
             def __init__(self):
-                self.args = None
+                self.criteria = []
 
             def uid(self, *args):
-                self.args = args
-                return "OK", [b"10 11 25"]
+                self.criteria.append(args[2])
+                if args[2] == sponsor_mail.IMAP_RELEVANT_SEARCHES[0]:
+                    return "OK", [b"10 11 25"]
+                if args[2] == sponsor_mail.IMAP_RELEVANT_SEARCHES[1]:
+                    return "OK", [b"25 30"]
+                return "OK", [b"30 40"]
 
         fake = FakeMail()
         found = sponsor_mail.search_relevant_uids(fake, 10)
-        self.assertEqual(found, [11, 25])
-        self.assertEqual(
-            fake.args,
-            ("search", None, sponsor_mail.IMAP_RELEVANT_SEARCH),
-        )
+        self.assertEqual(found, [11, 25, 30, 40])
+        self.assertEqual(fake.criteria, list(sponsor_mail.IMAP_RELEVANT_SEARCHES))
 
     def test_monthly_quota_skips_unreadable_header_and_preserves_existing_count(self):
         from datetime import datetime
