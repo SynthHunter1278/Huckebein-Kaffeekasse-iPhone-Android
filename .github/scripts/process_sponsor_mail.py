@@ -214,7 +214,7 @@ def parse_paypal_decision(msg, uid):
             decision_time = datetime.now(TZ)
 
     request_id_raw = field(body, ["request_id", "Anfrage-ID"])
-    request_match = re.search(r"\\b(PP-[A-Za-z0-9_-]{6,100})\\b", request_id_raw)
+    request_match = re.search(r"\b(PP-[A-Za-z0-9_-]{6,100})\b", request_id_raw)
     request_id = request_match.group(1) if request_match else request_id_raw.strip()
 
     return {
@@ -314,7 +314,7 @@ def get_uidvalidity(mail):
     try:
         response_type, response_data = mail.response("UIDVALIDITY")
         if response_type and str(response_type).upper() == "UIDVALIDITY" and response_data:
-            match = re.search(rb"(\\d+)", b" ".join(
+            match = re.search(rb"(\d+)", b" ".join(
                 value if isinstance(value, bytes) else str(value).encode()
                 for value in response_data
             ))
