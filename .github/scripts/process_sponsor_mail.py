@@ -521,6 +521,8 @@ def main():
             current_uidvalidity and previous_uidvalidity
             and current_uidvalidity != previous_uidvalidity
         )
+        uid_namespace_unverified = bool(current_uidvalidity and not previous_uidvalidity)
+        uidvalidity_replay_required = uidvalidity_changed or uid_namespace_unverified
         if current_uidvalidity:
             if uidvalidity_changed:
                 print(
@@ -529,13 +531,17 @@ def main():
                     "Nachrichten werden erneut geprüft, stabile IDs verhindern Duplikate."
                 )
                 state["last_uid"] = 0
-            elif not previous_uidvalidity:
-                print(f"Yahoo UIDVALIDITY erstmals erfasst: {current_uidvalidity}")
+            elif uid_namespace_unverified:
+                print(
+                    f"Yahoo UIDVALIDITY erstmals erfasst: {current_uidvalidity}; "
+                    "alter UID-Stand ist nicht zuordenbar, Nachrichten werden einmalig erneut geprüft."
+                )
+                state["last_uid"] = 0
             state["uidvalidity"] = current_uidvalidity
         else:
             print("WARNUNG: UIDVALIDITY fehlt; gespeicherter UID-Stand wird vorsichtshalber beibehalten.")
         diagnostic = False  # Live processing enabled after redacted diagnostics
-        uids = search_relevant_uids(mail, 0 if diagnostic or uidvalidity_changed else state.get("last_uid", 0))
+        uids = search_relevant_uids(mail, 0 if diagnostic or uidvalidity_replay_required else state.get("last_uid", 0))
         if diagnostic:
             uids = uids[-30:]
             print(f"Diagnosemodus: {len(uids)} neueste passende Nachrichten werden nur anhand ihrer Kopfzeilen geprüft; es wird nichts verändert.")
