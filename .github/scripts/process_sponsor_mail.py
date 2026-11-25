@@ -21,7 +21,6 @@ END = time(15, 0)
 IMAP_RELEVANT_SEARCHES = (
     'OR SUBJECT "KAFFEEKASSE" OR TEXT "KAFFEEKASSE" TEXT "ZAHLUNG VOM TEILNEHMER"',
     'SUBJECT "PayPal"',
-    'TEXT "PayPal"',
 )
 
 def load_json(path, default):
