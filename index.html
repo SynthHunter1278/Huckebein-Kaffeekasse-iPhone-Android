@@ -2020,8 +2020,10 @@ function getCalendarWeek(date) {
         }
 
         const currentDay = new Date().getDate();
-        const rawAmount = (codeNumber - CODE_OFFSET - (currentDay * DAY_MULTIPLIER)) / CODE_MULTIPLIER;
-        const amountCents = Math.round(rawAmount * 100);
+        // Die Rückrechnung liefert bereits Cent, weil der Erzeuger den
+        // Centbetrag mit CODE_MULTIPLIER multipliziert. Nicht nochmals ×100 rechnen.
+        const rawAmountCents = (codeNumber - CODE_OFFSET - (currentDay * DAY_MULTIPLIER)) / CODE_MULTIPLIER;
+        const amountCents = Math.round(rawAmountCents);
         const calculatedAmount = amountCents / 100;
         // Strikte Rückprüfung: Der eingegebene Code muss exakt dem heutigen
         // Tagescode für einen Cent-genauen Betrag entsprechen. Die alte reine
