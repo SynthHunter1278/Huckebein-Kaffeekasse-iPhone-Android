@@ -18,7 +18,11 @@ STATE = ROOT / ".github" / "state" / "sponsor-mail-state.json"
 TZ = ZoneInfo("Europe/Berlin")
 START = time(6, 0)
 END = time(15, 0)
-IMAP_RELEVANT_SEARCH = 'OR SUBJECT "KAFFEEKASSE" OR TEXT "KAFFEEKASSE" TEXT "ZAHLUNG VOM TEILNEHMER"'
+IMAP_RELEVANT_SEARCHES = (
+    'OR SUBJECT "KAFFEEKASSE" OR TEXT "KAFFEEKASSE" TEXT "ZAHLUNG VOM TEILNEHMER"',
+    'SUBJECT "PayPal"',
+    'TEXT "PayPal"',
+)
 
 def load_json(path, default):
     if not path.exists():
@@ -347,17 +351,27 @@ def get_uidvalidity(mail):
     return None
 
 
+def search_all_relevant_uids(mail):
+    """Union Kaffeekassen and PayPal search results; parser checks every candidate."""
+    found = set()
+    for criteria in IMAP_RELEVANT_SEARCHES:
+        status, data = mail.uid("search", None, criteria)
+        if status != "OK":
+            raise RuntimeError("Yahoo-Postfach konnte nicht nach Kaffeekassen-Nachrichten durchsucht werden")
+        if data and data[0]:
+            found.update(
+                int(value) for value in data[0].split()
+                if value.isdigit()
+            )
+    return sorted(found)
+
+
 def search_relevant_uids(mail, last_uid):
-    """Search only coffee-kasse notifications instead of downloading the whole inbox."""
-    status, data = mail.uid("search", None, IMAP_RELEVANT_SEARCH)
-    if status != "OK":
-        raise RuntimeError("Yahoo-Postfach konnte nicht nach Kaffeekassen-Nachrichten durchsucht werden")
-    found = [
-        int(value) for value in data[0].split()
-        if value.isdigit() and int(value) > int(last_uid)
+    """Search only relevant notifications instead of downloading the whole inbox."""
+    return [
+        uid for uid in search_all_relevant_uids(mail)
+        if uid > int(last_uid)
     ]
-    print(f"DEBUG main IMAP search UIDs: {found}")
-    return found
 
 def is_email_from_this_month(msg, now, account):
     """Count one delivered Kaffeekassen notification in the current Berlin month."""
@@ -380,14 +394,15 @@ def is_email_from_this_month(msg, now, account):
 
 def count_monthly_email_notifications(mail, now, account):
     """Count readable monthly notifications; one broken header must not stop booking processing."""
-    status, data = mail.uid("search", None, IMAP_RELEVANT_SEARCH)
-    if status != "OK":
-        print("WARNUNG: Yahoo-Suche für den E-Mail-Zähler fehlgeschlagen; Buchungsverarbeitung läuft weiter.")
+    try:
+        uids = search_all_relevant_uids(mail)
+    except Exception as exc:
+        print(f"WARNUNG: Yahoo-Suche für den E-Mail-Zähler fehlgeschlagen ({exc}); Buchungsverarbeitung läuft weiter.")
         return None
     total = 0
     unreadable = 0
-    print(f"DEBUG quota IMAP search UIDs: {[value.decode('ascii', errors='replace') for value in data[0].split()]}")
-    for raw_uid in data[0].split():
+    for raw_uid in uids:
+        raw_uid = str(raw_uid).encode("ascii")
         if not raw_uid.isdigit():
             continue
         uid_text = raw_uid.decode("ascii")
@@ -543,7 +558,7 @@ def main():
             state["uidvalidity"] = current_uidvalidity
         else:
             print("WARNUNG: UIDVALIDITY fehlt; gespeicherter UID-Stand wird vorsichtshalber beibehalten.")
-        diagnostic = True  # Temporary read-only parser diagnostics
+        diagnostic = False  # Live processing enabled after redacted diagnostics
         uids = search_relevant_uids(mail, 0 if diagnostic or uidvalidity_replay_required else state.get("last_uid", 0))
         if diagnostic:
             uids = uids[-30:]
