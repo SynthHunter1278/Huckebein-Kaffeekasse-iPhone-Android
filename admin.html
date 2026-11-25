@@ -755,8 +755,13 @@
             }
             const merged = [...archivedEntries, ...toArchive];
             await writeRepositoryJson("paypal-archive.json", { entries: merged }, "Kaffeekasse: PayPal-Einträge archiviert");
-            // Erst nach erfolgreichem Archiv-Commit wird die aktuelle Liste geleert.
-            await writeRepositoryJson("paypal-log.json", { entries: [] }, "Kaffeekasse: archivierte PayPal-Einträge aus aktueller Liste entfernt");
+            // Aktuelle Liste nach dem Archiv-Commit erneut lesen: neue Worker-Einträge bleiben erhalten.
+            const latestCurrent = await loadRepositoryJson("paypal-log.json");
+            const archivedIdSet = new Set(merged.map(entry => String(entry.id || entry.request_id || "")));
+            const remainingEntries = (Array.isArray(latestCurrent.entries) ? latestCurrent.entries : [])
+                .filter(entry => !archivedIdSet.has(String(entry.id || entry.request_id || "")));
+            // Bei einem parallelen Worker-Commit schützt GitHub-SHA-Konflikterkennung vor Überschreiben.
+            await writeRepositoryJson("paypal-log.json", { entries: remainingEntries }, "Kaffeekasse: archivierte PayPal-Einträge aus aktueller Liste entfernt");
             showStatus(toArchive.length + " PayPal-Einträge wurden archiviert. Das Archiv bleibt dauerhaft einsehbar.", true);
             await loadPaypalLog();
         } catch (error) {
