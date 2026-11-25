@@ -610,7 +610,7 @@ def main():
         mail.login(account, password)
         mailbox_name = find_hans_huckebein_mailbox(mail)
         previous_mailbox = str(state.get("mailbox", "INBOX")).strip()
-        select_status, _ = mail.select(mailbox_name)
+        select_status, _ = mail.select(chr(34) + mailbox_name + chr(34))
         if select_status != "OK":
             raise RuntimeError(f"Yahoo-Kassenordner konnte nicht geöffnet werden: {mailbox_name}")
         print(f"Yahoo-Kassenordner ausgewählt: {mailbox_name}")
