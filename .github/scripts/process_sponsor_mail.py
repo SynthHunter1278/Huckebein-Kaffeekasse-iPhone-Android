@@ -320,25 +320,35 @@ def is_email_from_this_month(msg, now):
 
 
 def count_monthly_email_notifications(mail, now):
-    """Recount this month's delivered Kaffeekassen copies in Yahoo, not local device counters."""
+    """Count readable monthly notifications; one broken header must not stop booking processing."""
     status, data = mail.uid(
         "search", None,
         'OR SUBJECT "KAFFEEKASSE" TEXT "KAFFEEKASSE"'
     )
     if status != "OK":
-        raise RuntimeError("Yahoo-Postfach konnte nicht für den E-Mail-Zähler durchsucht werden")
+        print("WARNUNG: Yahoo-Suche für den E-Mail-Zähler fehlgeschlagen; Buchungsverarbeitung läuft weiter.")
+        return None
     total = 0
+    unreadable = 0
     for raw_uid in data[0].split():
         if not raw_uid.isdigit():
             continue
-        fetch_status, fetched = mail.uid(
-            "fetch", raw_uid.decode("ascii"), "(BODY.PEEK[HEADER.FIELDS (FROM DATE SUBJECT)])"
-        )
-        if fetch_status != "OK" or not fetched or not isinstance(fetched[0], tuple):
-            raise RuntimeError(f"E-Mail-Kopfzeile UID {raw_uid.decode('ascii')} konnte nicht gelesen werden")
-        msg = email.message_from_bytes(fetched[0][1])
-        if is_email_from_this_month(msg, now):
-            total += 1
+        uid_text = raw_uid.decode("ascii")
+        try:
+            fetch_status, fetched = mail.uid(
+                "fetch", uid_text, "(BODY.PEEK[HEADER.FIELDS (FROM DATE SUBJECT)])"
+            )
+            if fetch_status != "OK" or not fetched or not isinstance(fetched[0], tuple):
+                raise ValueError("keine lesbare Header-Antwort")
+            msg = email.message_from_bytes(fetched[0][1])
+            if is_email_from_this_month(msg, now):
+                total += 1
+        except Exception as exc:
+            unreadable += 1
+            print(f"WARNUNG: E-Mail-Kopfzeile UID {uid_text} für den Monatszähler nicht lesbar ({exc}); wird übersprungen.")
+    if unreadable:
+        print(f"WARNUNG: Monatszähler unvollständig ({unreadable} Kopfzeile(n) übersprungen); vorhandener Kontingentstand bleibt erhalten.")
+        return None
     return total
 
 
@@ -396,7 +406,7 @@ def main():
         quota = config.get("emailKontingent")
         if not isinstance(quota, dict):
             quota = {}
-        quota_needs_refresh = (
+        quota_needs_refresh = monthly_email_count is not None and (
             quota.get("monat") != month_key
             or quota.get("anzahl") != monthly_email_count
             or quota.get("limit") != 200
@@ -412,7 +422,7 @@ def main():
             quota_needs_refresh = True
         # Heartbeat höchstens alle 12 Stunden, damit nicht alle fünf Minuten
         # ein unnötiger Git-Commit erzeugt wird. Änderungen am Zähler sofort.
-        if last_quota_update is None or now - last_quota_update >= timedelta(hours=12):
+        if monthly_email_count is not None and (last_quota_update is None or now - last_quota_update >= timedelta(hours=12)):
             quota_needs_refresh = True
         if quota_needs_refresh:
             config["emailKontingent"] = {
@@ -424,8 +434,11 @@ def main():
                 "quelle": "Yahoo-Postfach"
             }
             changed = True
-        print(f"E-Mail-Kontingent {month_key}: {monthly_email_count}/200"
-              + (" – gesperrt" if monthly_email_count >= 200 else ""))
+        if monthly_email_count is not None:
+            print(f"E-Mail-Kontingent {month_key}: {monthly_email_count}/200"
+                  + (" – gesperrt" if monthly_email_count >= 200 else ""))
+        else:
+            print("E-Mail-Kontingent: nicht aktualisiert (Header-Lesefehler); Buchungen werden normal verarbeitet.")
 
         # Frühstücksliste jeden Freitag ab 12:00 Uhr (Europe/Berlin)
         # einmalig leeren. Der 5-Minuten-Zeitplan fängt auch verzögerte Läufe ab.
