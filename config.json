@@ -22,7 +22,7 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "Benutzt bitte eure App",
+    "text": "Update: Happy Hour Funktion",
     "typ": "info"
   },
   "preise": {
@@ -52,7 +52,10 @@
   "paypal": {
     "aktiv": false
   },
-  "letzteNachricht": null,
+  "letzteNachricht": {
+    "text": "Benutzt bitte eure App",
+    "typ": "info"
+  },
   "sonderartikel": {
     "aktiv": false,
     "name": "Wolters 0,33L im Angebot",
@@ -65,5 +68,12 @@
     "gesperrt": false,
     "aktualisiert": "2026-11-24T18:23:44.114254+01:00",
     "quelle": "Yahoo-Postfach"
+  },
+  "happyHour": {
+    "aktiv": false,
+    "datum": "2026-11-25",
+    "start": "10:00",
+    "ende": "11:00",
+    "artikel": {}
   }
 }
