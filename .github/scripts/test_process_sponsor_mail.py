@@ -156,7 +156,7 @@ class SponsorMailTests(unittest.TestCase):
 
     def test_paypal_emailjs_inline_message_from_real_example(self):
         msg = make_mail(
-            "Neue PayPal-Aufladung eingegangen",
+            "PayPal-Aufladung eingegangen – KAFFEEKASSE – Uwe Töbermann – ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT",
             "Teilnehmer: KAFFEEKASSE – Uwe Töbermann – ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT\n"
             "Betrag: 10,00 € | user: KAFFEEKASSE – Uwe Töbermann – ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT "
             "| timestamp: 25.11.2026, 19:45:07 | request_id: PP-1795632299184-GODZ3 EUR",
