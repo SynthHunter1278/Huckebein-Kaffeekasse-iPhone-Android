@@ -84,7 +84,15 @@ def field(text, names):
         )
         match = re.search(pattern, text)
         if match:
-            return match.group(1).strip()
+            value = match.group(1).strip()
+            if value:
+                return value
+            # Some notification templates put the field value on the next line:
+            # "Teilnehmer:\\nUwe" instead of "Teilnehmer: Uwe".
+            following_lines = text[match.end():].splitlines()
+            for line in following_lines:
+                if line.strip():
+                    return line.strip()
     return ""
 
 def parse_breakfast_booking(msg, uid):
