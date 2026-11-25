@@ -114,7 +114,7 @@ class SponsorMailTests(unittest.TestCase):
     def test_paypal_paid_decision(self):
         msg = make_mail(
             "KAFFEEKASSE - PAYPAL-AUFLADUNG",
-            "user: Testperson – ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT\n"
+            "user: KAFFEEKASSE – Testperson – ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT\n"
             "amount: 10,00 €\ntimestamp: 16.11.2026, 12:00:00\n"
             "status: BEZAHLT\nrequest_id: PP-123456",
         )
@@ -127,7 +127,7 @@ class SponsorMailTests(unittest.TestCase):
     def test_paypal_not_paid_decision(self):
         msg = make_mail(
             "KAFFEEKASSE - PAYPAL-AUFLADUNG",
-            "user: Testperson – ZAHLUNG VOM TEILNEHMER ALS NICHT BEZAHLT BESTÄTIGT\n"
+            "user: KAFFEEKASSE – Testperson – ZAHLUNG VOM TEILNEHMER ALS NICHT BEZAHLT BESTÄTIGT\n"
             "amount: 5,00 €\ntimestamp: 16.11.2026, 12:00:00",
         )
         entry, reason = sponsor_mail.parse_paypal_decision(msg, 402)
@@ -161,6 +161,38 @@ class SponsorMailTests(unittest.TestCase):
                     expected,
                 )
 
+    def test_automatic_settlement_is_created_after_1500_from_matching_redemptions(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo("Europe/Berlin")
+        config = {
+            "preise": {"btn-kaffee": 0.5},
+            "geburtstag": {
+                "aktiv": True,
+                "spender": "Testspender",
+                "datum": "2026-11-25",
+                "aktionsId": "KAFFEE-20261125-ABC12345",
+                "automatischFreigegeben": True,
+                "abrechnung": {"id": "MANUELLER-TEST", "anzahl": 12, "gesamt": 6, "status": "offen"}
+            }
+        }
+        logs = {"entries": [
+            {"id": "FREE-1", "action_id": "KAFFEE-20261125-ABC12345"},
+            {"id": "FREE-2", "action_id": "KAFFEE-20261125-ABC12345"},
+            {"id": "OTHER", "action_id": "KAFFEE-ANDERE-AKTION"}
+        ]}
+        before = datetime(2026, 11, 25, 14, 59, tzinfo=tz)
+        self.assertFalse(sponsor_mail.finalize_birthday_settlement(config, logs, before))
+        after = datetime(2026, 11, 25, 15, 5, tzinfo=tz)
+        self.assertTrue(sponsor_mail.finalize_birthday_settlement(config, logs, after))
+        settlement = config["geburtstag"]["abrechnung"]
+        self.assertEqual(settlement["anzahl"], 2)
+        self.assertEqual(settlement["gesamt"], 1.0)
+        self.assertEqual(settlement["status"], "offen")
+        self.assertTrue(settlement["automatischErstellt"])
+        self.assertFalse(config["geburtstag"]["aktiv"])
+        self.assertFalse(sponsor_mail.finalize_birthday_settlement(config, logs, after))
+
     def test_search_is_limited_to_coffee_kasse_messages(self):
         class FakeMail:
             def __init__(self):
@@ -175,7 +207,7 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(found, [11, 25])
         self.assertEqual(
             fake.args,
-            ("search", None, 'OR SUBJECT "KAFFEEKASSE" TEXT "KAFFEEKASSE"'),
+            ("search", None, sponsor_mail.IMAP_RELEVANT_SEARCH),
         )
 
 

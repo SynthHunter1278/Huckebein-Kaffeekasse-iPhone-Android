@@ -60,6 +60,10 @@
         .switch input:checked + .slider:before { transform:translateX(20px); }
         .price-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px 14px; }
         .price-grid .form-group { margin-bottom:4px; }
+        .hh-price-item { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:7px 10px; min-width:0; padding:10px; border:1px solid #40516a; border-radius:10px; background:#1c2b40; }
+        .hh-product-label { min-width:0; margin:0; line-height:1.35; }
+        .hh-price-item .switch { grid-column:2; grid-row:1; }
+        .hh-price-input { grid-column:1 / -1; width:100%; }
         .availability-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px 14px; }
         .availability-item { display:flex; align-items:center; gap:8px; min-height:34px; color:#d3deeb; font-size:12px; font-weight:bold; }
         .availability-item label { flex:0 0 44px; margin:0; }
@@ -121,7 +125,6 @@
             <button type="button" class="nav-button" data-admin-page="sortiment" onclick="showAdminPage('sortiment')"><span class="nav-icon">☕</span><span class="nav-copy"><strong>Sortiment</strong><small>Produkte & Preise</small></span></button>
             <button type="button" class="nav-button" data-admin-page="happyhour" onclick="showAdminPage('happyhour')"><span class="nav-icon">☀</span><span class="nav-copy"><strong>Happy Hour</strong><small>Sonderpreise 10–11 Uhr</small></span></button>
             <button type="button" class="nav-button" data-admin-page="aufladen" onclick="showAdminPage('aufladen')"><span class="nav-icon">€</span><span class="nav-copy"><strong>Aufladen</strong><small>PayPal-Funktion</small></span></button>
-            <button type="button" class="nav-button" data-admin-page="abrechnung" onclick="showAdminPage('abrechnung')"><span class="nav-icon">▤</span><span class="nav-copy"><strong>Abrechnung</strong><small>Kaffee-Spenden</small></span></button>
             <button type="button" class="nav-button" data-admin-page="nachricht" onclick="showAdminPage('nachricht')"><span class="nav-icon">📢</span><span class="nav-copy"><strong>Nachricht an alle</strong><small>Mitteilung veröffentlichen</small></span></button>
             <button type="button" class="nav-button" data-admin-page="paypalprotokoll" onclick="showAdminPage('paypalprotokoll')"><span class="nav-icon">💳</span><span class="nav-copy"><strong>PayPal-Protokoll</strong><small>Aufladungen & Status</small></span></button>
             <button type="button" class="nav-button" data-admin-page="freikaffee" onclick="showAdminPage('freikaffee')"><span class="nav-icon">☕</span><span class="nav-copy"><strong>Freikaffee</strong><small>Abgerufene Kaffees</small></span></button>
@@ -147,10 +150,14 @@
                     <h2>Willkommen im Admin-Bereich</h2>
                     <p class="overview-lead">Alle Einstellungen sind jetzt in getrennten Bereichen organisiert. Wähle links oder oben den gewünschten Bereich. Deine Änderungen bleiben beim Wechsel zwischen den Bereichen erhalten.</p>
                     <div class="overview-grid">
-                        <div class="overview-tile"><strong>☕ Sortiment</strong><span>Verkaufsprodukte ein- oder ausblenden und Preise bearbeiten.</span></div>
-                        <div class="overview-tile"><strong>💳 Aufladen</strong><span>Die PayPal-Aufladung für die Kassen-App freigeben oder sperren.</span></div>
-                        <div class="overview-tile"><strong>🧾 Abrechnung</strong><span>Gezählte Kaffees abrechnen und erneut zustellen.</span></div>
-                        <div class="overview-tile"><strong>📢 Nachricht an alle</strong><span>Eine Mitteilung oder Warnung für alle Teilnehmer veröffentlichen.</span></div>
+                        <div class="overview-tile"><strong>✉ E-Mail-Kontingent</strong><span>Monatlichen Verbrauch der zugestellten Kassen-Mails und die automatische Funktionssperre prüfen.</span></div>
+                        <div class="overview-tile"><strong>☕ Sortiment</strong><span>Produkte ein- oder ausblenden, Verkaufspreise ändern und einen Sonderartikel verwalten.</span></div>
+                        <div class="overview-tile"><strong>☀ Happy Hour</strong><span>Für einen ausgewählten Tag Aktionsartikel und Sonderpreise von 10:00 bis 11:00 Uhr festlegen.</span></div>
+                        <div class="overview-tile"><strong>💳 Aufladen</strong><span>PayPal-Aufladung in der Kassen-App freigeben oder sperren. Bar-Aufladung bleibt davon unberührt.</span></div>
+                        <div class="overview-tile"><strong>📢 Nachricht an alle</strong><span>Eine aktuelle Mitteilung oder Warnung auf den Teilnehmergeräten veröffentlichen.</span></div>
+                        <div class="overview-tile"><strong>💳 PayPal-Protokoll</strong><span>Gemeldete PayPal-Aufladungen mit Betrag, Teilnehmer und Zahlungsstatus kontrollieren.</span></div>
+                        <div class="overview-tile"><strong>☕ Freikaffee</strong><span>Tatsächlich abgerufene Gratis-Kaffees einer Spendenaktion anzeigen.</span></div>
+                        <div class="overview-tile"><strong>🍳 Frühstück</strong><span>Eingegangene Buchungen für das Freitagsfrühstück einsehen.</span></div>
                     </div>
                     <p class="small-note">Wichtig: Der Button „Speichern & Live schalten“ am unteren Rand veröffentlicht die Änderungen aus allen Bereichen gemeinsam in config.json. Du musst dafür nicht zur Übersicht zurückkehren.</p>
                 </div>
@@ -181,15 +188,15 @@
                 <div class="content-card">
                     <h2>☕ Live-Preise ändern (€)</h2>
         <div class="price-grid">
-            <div class="form-group"><label>Kaffee:</label><input type="number" step="0.01" id="p_kaffee"></div>
-            <div class="form-group"><label>Cappuccino:</label><input type="number" step="0.01" id="p_cappuccino"></div>
-            <div class="form-group"><label>Wasser 0.7L:</label><input type="number" step="0.01" id="p_wasser"></div>
-            <div class="form-group"><label>Softdrink 0.33L:</label><input type="number" step="0.01" id="p_soft33"></div>
-            <div class="form-group"><label>Softdrink 0.5L:</label><input type="number" step="0.01" id="p_soft5"></div>
-            <div class="form-group"><label>Schokoriegel kl.:</label><input type="number" step="0.01" id="p_schokokl"></div>
-            <div class="form-group"><label>Schokoriegel gr.:</label><input type="number" step="0.01" id="p_schokogr"></div>
-            <div class="form-group"><label>Eiscreme:</label><input type="number" step="0.01" id="p_eis"></div>
-            <div class="form-group"><label>Frühstück:</label><input type="number" step="0.01" id="p_fruehstueck"></div>
+            <div class="form-group"><label>Kaffee:</label><input type="text" inputmode="decimal" autocomplete="off" id="p_kaffee"></div>
+            <div class="form-group"><label>Cappuccino:</label><input type="text" inputmode="decimal" autocomplete="off" id="p_cappuccino"></div>
+            <div class="form-group"><label>Wasser 0.7L:</label><input type="text" inputmode="decimal" autocomplete="off" id="p_wasser"></div>
+            <div class="form-group"><label>Softdrink 0.33L:</label><input type="text" inputmode="decimal" autocomplete="off" id="p_soft33"></div>
+            <div class="form-group"><label>Softdrink 0.5L:</label><input type="text" inputmode="decimal" autocomplete="off" id="p_soft5"></div>
+            <div class="form-group"><label>Schokoriegel kl.:</label><input type="text" inputmode="decimal" autocomplete="off" id="p_schokokl"></div>
+            <div class="form-group"><label>Schokoriegel gr.:</label><input type="text" inputmode="decimal" autocomplete="off" id="p_schokogr"></div>
+            <div class="form-group"><label>Eiscreme:</label><input type="text" inputmode="decimal" autocomplete="off" id="p_eis"></div>
+            <div class="form-group"><label>Frühstück:</label><input type="text" inputmode="decimal" autocomplete="off" id="p_fruehstueck"></div>
         </div>
                 </div>
                 <div class="content-card">
@@ -216,7 +223,7 @@
                     </div>
                     <div class="form-group">
                         <label for="specialProductPrice">Verkaufspreis (€):</label>
-                        <input type="number" id="specialProductPrice" min="0.01" max="100" step="0.01" value="1.00" inputmode="decimal">
+                        <input type="text" id="specialProductPrice" min="0.01" max="100" value="1,00" inputmode="decimal" autocomplete="off">
                     </div>
                     <div class="form-group flex-group">
                         <label class="switch">
@@ -247,15 +254,51 @@
                     <h2>🛒 Aktionsartikel und Sonderpreise</h2>
                     <p class="small-note" style="margin-top:-5px;margin-bottom:13px;">Artikel auswählen und für jeden ausgewählten Artikel einen Happy-Hour-Preis eintragen. 0,00 € ist als Gratisaktion möglich. Das Freitagsfrühstück ist bewusst ausgeschlossen.</p>
                     <div class="price-grid">
-                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_kaffee"><span class="slider"></span></label><label for="hhp_kaffee">☕ Kaffee</label><input type="number" id="hhp_kaffee" min="0" max="100" step="0.01" placeholder="€"></div>
-                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_cappuccino"><span class="slider"></span></label><label for="hhp_cappuccino">🥛 Cappuccino</label><input type="number" id="hhp_cappuccino" min="0" max="100" step="0.01" placeholder="€"></div>
-                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_wasser"><span class="slider"></span></label><label for="hhp_wasser">💧 Wasser 0,7L</label><input type="number" id="hhp_wasser" min="0" max="100" step="0.01" placeholder="€"></div>
-                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_soft33"><span class="slider"></span></label><label for="hhp_soft33">🥤 Softdrink 0,33L</label><input type="number" id="hhp_soft33" min="0" max="100" step="0.01" placeholder="€"></div>
-                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_soft5"><span class="slider"></span></label><label for="hhp_soft5">🥤 Softdrink 0,5L</label><input type="number" id="hhp_soft5" min="0" max="100" step="0.01" placeholder="€"></div>
-                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_schokokl"><span class="slider"></span></label><label for="hhp_schokokl">🍫 Schokoriegel klein</label><input type="number" id="hhp_schokokl" min="0" max="100" step="0.01" placeholder="€"></div>
-                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_schokogr"><span class="slider"></span></label><label for="hhp_schokogr">🍫 Schokoriegel groß</label><input type="number" id="hhp_schokogr" min="0" max="100" step="0.01" placeholder="€"></div>
-                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_eis"><span class="slider"></span></label><label for="hhp_eis">🍦 Eiscreme</label><input type="number" id="hhp_eis" min="0" max="100" step="0.01" placeholder="€"></div>
-                        <div class="form-group flex-group"><label class="switch"><input type="checkbox" id="hh_sonderartikel"><span class="slider"></span></label><label id="happyHourSpecialLabel" for="hhp_sonderartikel">⭐ Sonderartikel</label><input type="number" id="hhp_sonderartikel" min="0" max="100" step="0.01" placeholder="€"></div>
+                        <div class="hh-price-item">
+                            <label class="hh-product-label" for="hhp_kaffee">☕ Kaffee</label>
+                            <label class="switch"><input type="checkbox" id="hh_kaffee" aria-label="Kaffee in Happy Hour anbieten"><span class="slider"></span></label>
+                            <input type="text" class="hh-price-input" id="hhp_kaffee" min="0" max="100" inputmode="decimal" autocomplete="off" placeholder="0,00 €">
+                        </div>
+                        <div class="hh-price-item">
+                            <label class="hh-product-label" for="hhp_cappuccino">🥛 Cappuccino</label>
+                            <label class="switch"><input type="checkbox" id="hh_cappuccino" aria-label="Cappuccino in Happy Hour anbieten"><span class="slider"></span></label>
+                            <input type="text" class="hh-price-input" id="hhp_cappuccino" min="0" max="100" inputmode="decimal" autocomplete="off" placeholder="0,00 €">
+                        </div>
+                        <div class="hh-price-item">
+                            <label class="hh-product-label" for="hhp_wasser">💧 Wasser 0,7L</label>
+                            <label class="switch"><input type="checkbox" id="hh_wasser" aria-label="Wasser 0,7L in Happy Hour anbieten"><span class="slider"></span></label>
+                            <input type="text" class="hh-price-input" id="hhp_wasser" min="0" max="100" inputmode="decimal" autocomplete="off" placeholder="0,00 €">
+                        </div>
+                        <div class="hh-price-item">
+                            <label class="hh-product-label" for="hhp_soft33">🥤 Softdrink 0,33L</label>
+                            <label class="switch"><input type="checkbox" id="hh_soft33" aria-label="Softdrink 0,33L in Happy Hour anbieten"><span class="slider"></span></label>
+                            <input type="text" class="hh-price-input" id="hhp_soft33" min="0" max="100" inputmode="decimal" autocomplete="off" placeholder="0,00 €">
+                        </div>
+                        <div class="hh-price-item">
+                            <label class="hh-product-label" for="hhp_soft5">🥤 Softdrink 0,5L</label>
+                            <label class="switch"><input type="checkbox" id="hh_soft5" aria-label="Softdrink 0,5L in Happy Hour anbieten"><span class="slider"></span></label>
+                            <input type="text" class="hh-price-input" id="hhp_soft5" min="0" max="100" inputmode="decimal" autocomplete="off" placeholder="0,00 €">
+                        </div>
+                        <div class="hh-price-item">
+                            <label class="hh-product-label" for="hhp_schokokl">🍫 Schokoriegel klein</label>
+                            <label class="switch"><input type="checkbox" id="hh_schokokl" aria-label="Schokoriegel klein in Happy Hour anbieten"><span class="slider"></span></label>
+                            <input type="text" class="hh-price-input" id="hhp_schokokl" min="0" max="100" inputmode="decimal" autocomplete="off" placeholder="0,00 €">
+                        </div>
+                        <div class="hh-price-item">
+                            <label class="hh-product-label" for="hhp_schokogr">🍫 Schokoriegel groß</label>
+                            <label class="switch"><input type="checkbox" id="hh_schokogr" aria-label="Schokoriegel groß in Happy Hour anbieten"><span class="slider"></span></label>
+                            <input type="text" class="hh-price-input" id="hhp_schokogr" min="0" max="100" inputmode="decimal" autocomplete="off" placeholder="0,00 €">
+                        </div>
+                        <div class="hh-price-item">
+                            <label class="hh-product-label" for="hhp_eis">🍦 Eiscreme</label>
+                            <label class="switch"><input type="checkbox" id="hh_eis" aria-label="Eiscreme in Happy Hour anbieten"><span class="slider"></span></label>
+                            <input type="text" class="hh-price-input" id="hhp_eis" min="0" max="100" inputmode="decimal" autocomplete="off" placeholder="0,00 €">
+                        </div>
+                        <div class="hh-price-item">
+                            <label class="hh-product-label" id="happyHourSpecialLabel" for="hhp_sonderartikel">⭐ Sonderartikel</label>
+                            <label class="switch"><input type="checkbox" id="hh_sonderartikel" aria-label="Sonderartikel in Happy Hour anbieten"><span class="slider"></span></label>
+                            <input type="text" class="hh-price-input" id="hhp_sonderartikel" min="0" max="100" inputmode="decimal" autocomplete="off" placeholder="0,00 €">
+                        </div>
                     </div>
                     <p class="small-note">Die Sonderpreise werden nur während des ausgewählten Zeitfensters verwendet. Danach setzt die Kassen-App automatisch wieder die normalen Preise ein.</p>
                 </div>
@@ -275,20 +318,6 @@
                 </div>
             </section>
 
-            <section class="page-panel" data-admin-panel="abrechnung" hidden>
-                <div class="content-card">
-                    <h2>🧾 Kaffee-Spenden-Abrechnung</h2>
-        <div class="form-group">
-            <label for="birthdayCoffeeCount">Anzahl der spendierten Kaffees (aus den E-Mails):</label>
-            <input type="number" id="birthdayCoffeeCount" min="1" max="1000" step="1" placeholder="z. B. 24">
-        </div>
-        <div class="settlement-preview" id="birthdaySettlementPreview">Bitte nach Ende der Kaffee-Spendenzeit die Entnahmemeldungen zählen und die Anzahl eintragen.</div>
-        <button type="button" class="btn-publish" id="publishBirthdayButton" onclick="publishBirthdaySettlement()">🧾 Abrechnung veröffentlichen</button>
-        <button type="button" class="btn-resend" id="resendBirthdayButton" onclick="resendBirthdaySettlement()">↻ Vorhandene Abrechnung erneut zustellen</button>
-        <p class="small-note">„Erneut zustellen“ veröffentlicht dieselbe offene Abrechnung mit derselben Abrechnungs-ID erneut. Dadurch wird sie auf dem Spendergerät erneut abgefragt, ohne auf demselben Gerät ein zweites Mal abzubuchen.</p>
-        <p class="small-note">Die Admin-App berechnet den Betrag aus Anzahl × normalem Kaffeepreis und veröffentlicht ihn in config.json. Der Spender bestätigt die Abbuchung in seiner eigenen Kassen-App.</p>
-                </div>
-            </section>
 
             <section class="page-panel" data-admin-panel="nachricht" hidden>
                 <div class="content-card">
@@ -357,7 +386,6 @@
         sortiment: { title: "Sortiment", description: "Produkte sichtbar schalten und Verkaufspreise bearbeiten." },
         happyhour: { title: "Happy Hour", description: "Einmalige Sonderaktion für ausgewählte Artikel von 10:00 bis 11:00 Uhr." },
         aufladen: { title: "Aufladen", description: "Die PayPal-Aufladung in der Kassen-App verwalten." },
-        abrechnung: { title: "Abrechnung", description: "Kaffee-Spenden-Abrechnungen verwalten und erneut zustellen." },
         nachricht: { title: "Nachricht an alle", description: "Mitteilungen und Warnungen für alle Teilnehmer veröffentlichen." },
         paypalprotokoll: { title: "PayPal-Protokoll", description: "Zentrale Übersicht der gemeldeten PayPal-Aufladungen." },
         fruehstueck: { title: "Frühstück", description: "Übersicht der eingegangenen Freitagsfrühstück-Buchungen." },
@@ -477,10 +505,6 @@
             const config = JSON.parse(decodeBase64Utf8(data.content));
             loadedConfig = config;
 
-            const birthdayConfig = config.geburtstag || config.freeCoffee || {};
-            const existingSettlement = birthdayConfig.abrechnung || null;
-            document.getElementById("birthdayCoffeeCount").value = existingSettlement ? existingSettlement.anzahl : "";
-            updateBirthdaySettlementPreview();
             document.getElementById("msgActive").checked = Boolean(config.nachricht?.aktiv ?? config.message?.active);
             document.getElementById("msgText").value = config.nachricht?.text || config.message?.text || "";
             document.getElementById("msgColor").value = (config.nachricht?.typ === "warnung" || config.message?.color === "red") ? "red" : "blue";
@@ -654,20 +678,19 @@
             showStatus("Speichern ist gesperrt, solange die vorhandene config.json nicht erfolgreich geladen wurde. Bitte Seite neu laden.", false);
             return;
         }
-        const parsePrice = id => {
-            const n = Number(document.getElementById(id).value);
-            if (!Number.isFinite(n) || n < 0 || n > 100) throw new Error("Bitte gültige Preise zwischen 0,00 und 100,00 € eingeben.");
+        const parsePrice = (id, min = 0, max = 100) => {
+            const raw = String(document.getElementById(id).value ?? "").trim().replace(/\s/g, "").replace(",", ".");
+            if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) throw new Error("Bitte einen gültigen Preis mit höchstens zwei Nachkommastellen eingeben (z. B. 1,25).");
+            const n = Number(raw);
+            if (!Number.isFinite(n) || n < min || n > max) throw new Error("Bitte einen Preis zwischen " + min.toFixed(2) + " und " + max.toFixed(2) + " € eingeben.");
             return Math.round(n * 100) / 100;
         };
         let updatedConfig;
         try {
             const specialProductActive = document.getElementById("specialProductActive").checked;
             const specialProductName = document.getElementById("specialProductName").value.trim().slice(0, 40);
-            const specialProductPrice = Number(document.getElementById("specialProductPrice").value);
+            const specialProductPrice = parsePrice("specialProductPrice", 0.01, 100);
             if (specialProductActive && !specialProductName) throw new Error("Bitte einen Namen für den Sonderartikel eintragen.");
-            if (!Number.isFinite(specialProductPrice) || specialProductPrice < 0.01 || specialProductPrice > 100) {
-                throw new Error("Bitte für den Sonderartikel einen Preis zwischen 0,01 und 100,00 € eintragen.");
-            }
             const happyHourDate = document.getElementById("happyHourDate").value;
             if (!/^\d{4}-\d{2}-\d{2}$/.test(happyHourDate) || Number.isNaN(new Date(happyHourDate + "T12:00:00").getTime())) {
                 throw new Error("Bitte einen gültigen Happy-Hour-Aktionstag auswählen.");
@@ -677,9 +700,8 @@
             for (const [key, productId] of Object.entries(happyHourMapping)) {
                 if (!document.getElementById("hh_" + key).checked) continue;
                 if (key === "sonderartikel" && !specialProductActive) throw new Error("Der Sonderartikel muss zuerst im Sortiment aktiviert werden.");
-                const value = Number(document.getElementById("hhp_" + key).value);
-                if (!Number.isFinite(value) || value < 0 || value > 100) throw new Error("Bitte für jeden ausgewählten Happy-Hour-Artikel einen Preis zwischen 0,00 und 100,00 € eintragen.");
-                happyHourArticles[productId] = Math.round(value * 100) / 100;
+                const value = parsePrice("hhp_" + key, 0, 100);
+                happyHourArticles[productId] = value;
             }
             const happyHourActive = document.getElementById("happyHourActive").checked;
             if (happyHourActive && Object.keys(happyHourArticles).length === 0) throw new Error("Bitte mindestens einen Artikel für die Happy Hour auswählen.");
@@ -695,7 +717,7 @@
                 sonderartikel: {
                     aktiv: specialProductActive,
                     name: specialProductName,
-                    preis: Math.round(specialProductPrice * 100) / 100
+                    preis: specialProductPrice
                 },
                 nachricht: {
                     aktiv: document.getElementById("msgActive").checked,
@@ -833,185 +855,10 @@
         return `${y}-${m}-${d}`;
     }
 
-    function updateBirthdaySettlementPreview() {
-        const rawCount = document.getElementById("birthdayCoffeeCount")?.value ?? "";
-        const count = Number(rawCount);
-        const price = Number(document.getElementById("p_kaffee")?.value);
-        const box = document.getElementById("birthdaySettlementPreview");
-        if (!box) return;
-        if (rawCount === "") {
-            box.textContent = "Bitte nach 15 Uhr die Anzahl der spendierten Kaffees aus den E-Mails eintragen.";
-            return;
-        }
-        if (!Number.isInteger(count) || count < 1 || !Number.isFinite(price) || price < 0) {
-            box.textContent = "Bitte eine Anzahl ab 1 und einen gültigen Kaffeepreis eintragen.";
-            return;
-        }
-        const total = Math.round(count * price * 100) / 100;
-        box.innerHTML = `<strong>${count} Kaffees × ${price.toFixed(2).replace(".", ",")} € = ${total.toFixed(2).replace(".", ",")} €</strong><br><span class="small-note">Dieser Betrag wird dem Spender in seiner Kassen-App zur Bestätigung angezeigt.</span>`;
-    }
-
-    async function publishBirthdaySettlement() {
-        if (!checkCredentials()) return;
-        if (!configLoaded) {
-            showStatus("Zuerst müssen die aktuellen Live-Daten erfolgreich geladen sein.", false);
-            return;
-        }
-        const currentBirthday = loadedConfig?.geburtstag || loadedConfig?.freeCoffee || {};
-        const spender = String(currentBirthday.spender || currentBirthday.giver || "").trim();
-        const eventDate = String(currentBirthday.datum || "");
-        const countRaw = document.getElementById("birthdayCoffeeCount").value;
-        const count = Number(countRaw);
-        const unitPrice = Number(document.getElementById("p_kaffee").value);
-        if (!spender) { showStatus("Bitte zuerst den App-Anmeldenamen des Kaffeespenders eintragen.", false); return; }
-        if (!eventDate) { showStatus("Bitte das Datum der Kaffeeaktion eintragen.", false); return; }
-        if (countRaw === "" || !Number.isInteger(count) || count < 1 || count > 1000) {
-            showStatus("Bitte eine ganze Anzahl zwischen 1 und 1000 eintragen.", false); return;
-        }
-        if (!Number.isFinite(unitPrice) || unitPrice < 0 || unitPrice > 100) {
-            showStatus("Der normale Kaffeepreis ist ungültig.", false); return;
-        }
-        const endOfEvent = new Date(`${eventDate}T15:00:00`);
-        if (Date.now() < endOfEvent.getTime()) {
-            showStatus("Die Abrechnung kann erst nach 15:00 Uhr am Tag der Kaffeeaktion veröffentlicht werden.", false); return;
-        }
-
-        const publishButton = document.getElementById("publishBirthdayButton");
-        publishButton.disabled = true;
-        publishButton.textContent = "⏳ Veröffentliche Abrechnung...";
-        try {
-            const getResponse = await fetchGetWithRetry(apiUrl() + "?cb=" + Date.now(), {
-                method: "GET", headers: githubHeaders(), cache: "no-store"
-            }, 3);
-            const current = await readApiJson(getResponse);
-            if (!current.sha || !current.content) throw new Error("GitHub lieferte keine vollständige config.json.");
-            const latestConfig = JSON.parse(decodeBase64Utf8(current.content));
-            const birthday = latestConfig.geburtstag || latestConfig.freeCoffee || {};
-            const existing = birthday.abrechnung || null;
-            if (existing && existing.status === "offen" && existing.spender === spender && existing.datum === eventDate) {
-                throw new Error(`Für ${spender} liegt bereits eine offene Abrechnung (${existing.id}) vor. Sie wird nicht überschrieben, damit keine Doppelbelastung entsteht.`);
-            }
-
-            const total = Math.round(count * unitPrice * 100) / 100;
-            const settlementId = `KAFFEE-${eventDate.replace(/-/g, "")}-${Date.now()}`;
-            const settlement = {
-                id: settlementId,
-                spender,
-                datum: eventDate,
-                anzahl: count,
-                einzelpreis: Math.round(unitPrice * 100) / 100,
-                gesamt: total,
-                status: "offen",
-                erstellt: new Date().toISOString()
-            };
-            const nextBirthday = {
-                ...birthday,
-                aktiv: false,
-                spender,
-                datum: eventDate,
-                abrechnung: settlement
-            };
-            delete nextBirthday.archiv;
-            const finalConfig = { ...latestConfig, geburtstag: nextBirthday };
-            const contentBase64 = btoa(Array.from(new TextEncoder().encode(JSON.stringify(finalConfig, null, 2)), b => String.fromCharCode(b)).join(""));
-            const response = await fetch(apiUrl(), {
-                method: "PUT",
-                headers: { ...githubHeaders(), "Content-Type": "application/json" },
-                body: JSON.stringify({ message: "Kaffeekasse: Kaffee-Spenden-Abrechnung veröffentlicht", content: contentBase64, sha: current.sha })
-            });
-            const result = await readApiJson(response);
-            currentSha = result.content?.sha || current.sha;
-            loadedConfig = finalConfig;
-            showStatus(`Abrechnung ${settlementId} veröffentlicht: ${count} Kaffees = ${total.toFixed(2).replace(".", ",")} €. Der Spender sieht sie beim nächsten Neuladen.`, true);
-        } catch (e) {
-            showStatus("Abrechnung konnte nicht veröffentlicht werden: " + e.message, false);
-        } finally {
-            publishButton.disabled = false;
-            publishButton.textContent = "🧾 Abrechnung veröffentlichen";
-        }
-    }
-
-    // Erneute Zustellung nutzt dieselbe Abrechnungs-ID. Auf dem Spendergerät
-    // verhindert diese ID eine zweite Abbuchung, falls die Abrechnung dort bereits
-    // bestätigt wurde. Die Konfiguration wird trotzdem neu veröffentlicht, damit
-    // eine bislang nicht angekommene Abrechnung erneut abgefragt werden kann.
-    async function resendBirthdaySettlement() {
-        if (!checkCredentials()) return;
-        const button = document.getElementById("resendBirthdayButton");
-        button.disabled = true;
-        button.textContent = "⏳ Stelle vorhandene Abrechnung erneut zu...";
-        try {
-            const getResponse = await fetchGetWithRetry(apiUrl() + "?cb=" + Date.now(), {
-                method: "GET", headers: githubHeaders(), cache: "no-store"
-            }, 3);
-            const current = await readApiJson(getResponse);
-            if (!current.sha || !current.content) throw new Error("GitHub lieferte keine vollständige config.json.");
-            const latestConfig = JSON.parse(decodeBase64Utf8(current.content));
-            const birthday = latestConfig.geburtstag || latestConfig.freeCoffee || {};
-            const existing = birthday.abrechnung || null;
-            if (!existing || existing.status !== "offen") {
-                throw new Error("Es gibt keine offene Abrechnung, die erneut zugestellt werden kann.");
-            }
-            const count = Number(existing.anzahl) || 0;
-            const total = Number(existing.gesamt);
-            const safeTotal = Number.isFinite(total) ? total : count * (Number(existing.einzelpreis) || 0);
-            const id = String(existing.id || "").trim();
-            if (!id) throw new Error("Die vorhandene Abrechnung besitzt keine Abrechnungs-ID. Bitte nicht neu veröffentlichen, bevor das geprüft wurde.");
-            const spender = String(existing.spender || birthday.spender || "").trim();
-            const dateLabel = String(existing.datum || "");
-            const approved = confirm(
-                `Vorhandene Abrechnung erneut zustellen?\n\nSpender: ${spender}\nDatum: ${dateLabel}\nKaffees: ${count}\nBetrag: ${safeTotal.toFixed(2).replace(".", ",")} €\nAbrechnungs-ID: ${id}\n\nDie Abrechnungs-ID bleibt unverändert. Auf demselben Gerät wird dadurch nicht erneut abgebucht.`
-            );
-            if (!approved) return;
-
-            const updatedSettlement = {
-                ...existing,
-                erneutVeröffentlicht: new Date().toISOString(),
-                erneutVeröffentlichtAnzahl: (Number(existing.erneutVeröffentlichtAnzahl) || 0) + 1
-            };
-            const finalConfig = {
-                ...latestConfig,
-                geburtstag: { ...birthday, abrechnung: updatedSettlement }
-            };
-            delete finalConfig.geburtstag.archiv;
-            const contentBase64 = btoa(Array.from(new TextEncoder().encode(JSON.stringify(finalConfig, null, 2)), b => String.fromCharCode(b)).join(""));
-            const putResponse = await fetch(apiUrl(), {
-                method: "PUT",
-                headers: { ...githubHeaders(), "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    message: `Kaffeekasse: offene Abrechnung ${id} erneut zugestellt`,
-                    content: contentBase64,
-                    sha: current.sha
-                })
-            });
-            const result = await readApiJson(putResponse);
-            currentSha = result.content?.sha || current.sha;
-            loadedConfig = finalConfig;
-            showStatus(`Die offene Abrechnung für ${spender} wurde mit derselben ID (${id}) erneut veröffentlicht. Die Kassen-App fragt sie spätestens beim nächsten Aktualisieren ab.`, true);
-        } catch (error) {
-            showStatus("Erneute Zustellung fehlgeschlagen: " + error.message, false);
-        } finally {
-            button.disabled = false;
-            button.textContent = "↻ Vorhandene Abrechnung erneut zustellen";
-        }
-    }
-
     document.addEventListener("DOMContentLoaded", () => {
-        ["birthdayCoffeeCount", "p_kaffee"].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.addEventListener("input", updateBirthdaySettlementPreview);
-        });
         ["happyHourActive", "happyHourDate", "hh_kaffee", "hh_cappuccino", "hh_wasser", "hh_soft33", "hh_soft5", "hh_schokokl", "hh_schokogr", "hh_eis", "hh_sonderartikel"].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener("change", updateHappyHourPreview);
-        });
-        const birthdayDateInput = document.getElementById("freeCoffeeDate");
-        if (birthdayDateInput) birthdayDateInput.addEventListener("change", () => {
-            const loadedBirthday = loadedConfig.geburtstag || loadedConfig.freeCoffee || {};
-            if (birthdayDateInput.value !== (loadedBirthday.datum || "")) {
-                document.getElementById("birthdayCoffeeCount").value = "";
-                updateBirthdaySettlementPreview();
-            }
         });
     });
 

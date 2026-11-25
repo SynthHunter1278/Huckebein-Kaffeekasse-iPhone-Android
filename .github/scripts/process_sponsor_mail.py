@@ -19,6 +19,7 @@ TZ = ZoneInfo("Europe/Berlin")
 START = time(6, 0)
 END = time(15, 0)
 ALLOWED_SENDER = "toeber2000@yahoo.de"
+IMAP_RELEVANT_SEARCH = 'OR SUBJECT "KAFFEEKASSE" OR TEXT "KAFFEEKASSE" TEXT "ZAHLUNG VOM TEILNEHMER"'
 
 def load_json(path, default):
     if not path.exists():
@@ -170,6 +171,7 @@ def parse_paypal_decision(msg, uid):
         r"\s*[–-]\s*ZAHLUNG VOM TEILNEHMER ALS (?:NICHT )?BEZAHLT BESTÄTIGT\s*$",
         "", user_value, flags=re.I
     ).strip()
+    name = re.sub(r"^KAFFEEKASSE\s*[–-]\s*", "", name, flags=re.I).strip()
     amount_raw = field(body, ["amount", "Betrag"])
     amount_match = re.search(r"(\d+(?:[.,]\d{1,2})?)", amount_raw)
     if not amount_match:
@@ -290,10 +292,7 @@ def is_signup_time_valid(request_time, now):
 
 def search_relevant_uids(mail, last_uid):
     """Search only coffee-kasse notifications instead of downloading the whole inbox."""
-    status, data = mail.uid(
-        "search", None,
-        'OR SUBJECT "KAFFEEKASSE" TEXT "KAFFEEKASSE"'
-    )
+    status, data = mail.uid("search", None, IMAP_RELEVANT_SEARCH)
     if status != "OK":
         raise RuntimeError("Yahoo-Postfach konnte nicht nach Kaffeekassen-Nachrichten durchsucht werden")
     return [
@@ -306,9 +305,8 @@ def is_email_from_this_month(msg, now):
     sender = parseaddr(msg.get("From", ""))[1].strip().casefold()
     if sender != ALLOWED_SENDER:
         return False
-    subject = decode_header_value(msg.get("Subject", ""))
-    if "KAFFEEKASSE" not in subject.upper():
-        return False
+    # Der IMAP-Suchfilter stellt sicher, dass nur Kassen- oder PayPal-Statusmails
+    # in diese Monatszählung gelangen; der Betreff kann beim PayPal-Template frei sein.
     try:
         sent_at = parsedate_to_datetime(msg.get("Date", ""))
         if sent_at.tzinfo is None:
@@ -321,10 +319,7 @@ def is_email_from_this_month(msg, now):
 
 def count_monthly_email_notifications(mail, now):
     """Recount this month's delivered Kaffeekassen copies in Yahoo, not local device counters."""
-    status, data = mail.uid(
-        "search", None,
-        'OR SUBJECT "KAFFEEKASSE" TEXT "KAFFEEKASSE"'
-    )
+    status, data = mail.uid("search", None, IMAP_RELEVANT_SEARCH)
     if status != "OK":
         raise RuntimeError("Yahoo-Postfach konnte nicht für den E-Mail-Zähler durchsucht werden")
     total = 0
@@ -350,6 +345,76 @@ def commit_state():
     if changed.returncode == 1:
         subprocess.run(["git", "commit", "-m", "Automatische Kaffee-Spenderfreigabe"], cwd=ROOT, check=True)
         subprocess.run(["git", "push"], cwd=ROOT, check=True)
+
+def finalize_birthday_settlement(config, free_coffee_log, now):
+    """Publish the automatic settlement for a completed sponsor action."""
+    birthday = config.setdefault("geburtstag", {})
+    if not isinstance(birthday, dict) or not birthday.get("automatischFreigegeben"):
+        return False
+    action_id = str(birthday.get("aktionsId", "")).strip()
+    spender = str(birthday.get("spender", "")).strip()
+    date_raw = str(birthday.get("datum", "")).strip()
+    if not action_id or not spender:
+        return False
+    try:
+        event_day = datetime.strptime(date_raw, "%Y-%m-%d").date()
+    except ValueError:
+        return False
+    local_now = now.astimezone(TZ)
+    deadline = datetime.combine(event_day, END, TZ)
+    if local_now < deadline:
+        return False
+
+    existing = birthday.get("abrechnung") or {}
+    if existing.get("status") == "bestätigt":
+        return False
+
+    redeemed_ids = set()
+    entries = free_coffee_log.get("entries", []) if isinstance(free_coffee_log, dict) else []
+    for index, entry in enumerate(entries if isinstance(entries, list) else []):
+        if not isinstance(entry, dict) or str(entry.get("action_id", "")) != action_id:
+            continue
+        redeemed_ids.add(str(entry.get("id") or entry.get("notification_id") or index))
+    count = len(redeemed_ids)
+
+    prices = config.get("preise", {}) if isinstance(config.get("preise"), dict) else {}
+    try:
+        unit_price = round(float(prices.get("btn-kaffee", 0.5)) * 100) / 100
+    except (TypeError, ValueError):
+        unit_price = 0.5
+    if not 0 <= unit_price <= 100:
+        unit_price = 0.5
+    total = round(count * unit_price * 100) / 100
+    status = "offen" if count else "keine_entnahmen"
+    same_auto_settlement = (
+        existing.get("automatischErstellt") is True
+        and existing.get("aktionsId") == action_id
+    )
+    settlement_id = (
+        str(existing.get("id"))
+        if same_auto_settlement and existing.get("id")
+        else "KAFFEE-" + event_day.strftime("%Y%m%d") + "-" + action_id[-8:]
+    )
+    created = existing.get("erstellt") if same_auto_settlement else None
+    settlement = {
+        "id": settlement_id,
+        "spender": spender,
+        "datum": event_day.isoformat(),
+        "anzahl": count,
+        "einzelpreis": unit_price,
+        "gesamt": total,
+        "status": status,
+        "erstellt": created or local_now.isoformat(),
+        "automatischErstellt": True,
+        "aktionsId": action_id,
+        "quelle": "Freikaffee-Protokoll"
+    }
+    birthday["aktiv"] = False
+    if birthday.get("abrechnung") != settlement:
+        birthday["abrechnung"] = settlement
+        return True
+    return False
+
 
 def main():
     account = os.environ["YAHOO_EMAIL"]
@@ -527,6 +592,8 @@ def main():
                 continue
 
             request, reason = parse_request(msg, uid)
+            if request and finalize_birthday_settlement(config, free_coffee_log, now):
+                changed = True
             if not request:
                 print(f"UID {uid}: ignoriert ({reason})")
                 continue
@@ -590,6 +657,10 @@ def main():
             sponsor_activated = True
             # Nur eine Anfrage je Sperrfenster freischalten.
             break
+
+        # Nach Verarbeitung aller eingegangenen E-Mails die Tagesaktion automatisch abrechnen.
+        if finalize_birthday_settlement(config, free_coffee_log, now):
+            changed = True
 
         # Vorgemerkte Anmeldungen erneut prüfen, sobald die offene Abrechnung erledigt ist.
         if pending_requests and not sponsor_activated:

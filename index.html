@@ -1166,14 +1166,9 @@ body { min-height:100vh; background:radial-gradient(ellipse at 50% 12%,#173b58 0
     function startPublicConfigAutoRefresh() {
         if (publicConfigRefreshTimer) return;
 
-        // Direkt nach dem Start zwei Minuten lang alle 10 Sekunden nach
-        // einer inzwischen veröffentlichten GitHub-Pages-Konfiguration suchen.
-        publicConfigRefreshTimer = setInterval(refreshPublicConfigInBackground, 10000);
-        publicConfigFastRefreshStopTimer = setTimeout(() => {
-            if (publicConfigRefreshTimer) clearInterval(publicConfigRefreshTimer);
-            publicConfigRefreshTimer = setInterval(refreshPublicConfigInBackground, 120000);
-            publicConfigFastRefreshStopTimer = null;
-        }, 120000);
+        // Während der Freikaffee-Aktion zeitnah veröffentlichte Freigaben abrufen.
+        // 30 Sekunden sind ein Kompromiss aus Aktualität und Netzlast.
+        publicConfigRefreshTimer = setInterval(refreshPublicConfigInBackground, 30000);
 
         // Beim Wechsel zurück zur App sofort die aktuellen Live-Daten abrufen.
         document.addEventListener("visibilitychange", () => {
@@ -2096,7 +2091,8 @@ function executePaypalDeposit(betrag) {
     function sendPaypalDecisionEmail(request, paid) {
         const decision = paid ? "ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT" : "ZAHLUNG VOM TEILNEHMER ALS NICHT BEZAHLT BESTÄTIGT";
         const templateParams = {
-            user: `${request.user} – ${decision}`,
+            subject: "KAFFEEKASSE – PAYPAL-AUFLADUNG – STATUS",
+            user: `KAFFEEKASSE – ${request.user} – ${decision}`,
             amount: Number(request.amount).toFixed(2).replace(".", ",") + " €",
             timestamp: new Date().toLocaleString("de-DE"),
             status: paid ? "BEZAHLT" : "NICHT BEZAHLT",
@@ -2131,7 +2127,8 @@ function executePaypalDeposit(betrag) {
 
         if (paid) {
             const currentDay = new Date().getDate();
-            const code = (Number(request.amount) * CODE_MULTIPLIER) + (currentDay * DAY_MULTIPLIER) + CODE_OFFSET;
+            const amountCents = Math.round(Number(request.amount) * 100);
+            const code = (amountCents * CODE_MULTIPLIER) + (currentDay * DAY_MULTIPLIER) + CODE_OFFSET;
             try {
                 localStorage.setItem("kaffeekasse_pending_code", String(code));
                 localStorage.removeItem("kaffeekasse_pending_paypal");
