@@ -182,7 +182,13 @@ class SponsorMailTests(unittest.TestCase):
     def test_paypal_log_deduplication_uses_request_id(self):
         existing = {"id": "old-uid", "request_id": "PP-1795632299184-GODZ3"}
         duplicate = {"id": "new-uid", "request_id": "PP-1795632299184-GODZ3"}
-        self.assertEqual(existing["request_id"], duplicate["request_id"])
+        different = {"id": "new-uid", "request_id": "PP-OTHER-123456"}
+        self.assertTrue(sponsor_mail.is_duplicate_paypal_entry(duplicate, [existing]))
+        self.assertFalse(sponsor_mail.is_duplicate_paypal_entry(different, [existing]))
+        self.assertTrue(sponsor_mail.is_duplicate_paypal_entry(
+            {"id": "same-uid", "request_id": ""},
+            [{"id": "same-uid", "request_id": ""}],
+        ))
 
     def test_paypal_not_paid_decision(self):
         msg = make_mail(
