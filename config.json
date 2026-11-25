@@ -2,7 +2,7 @@
   "geburtstag": {
     "aktiv": true,
     "spender": "Uwe Töbermann",
-    "datum": "2026-11-24",
+    "datum": "2026-11-25",
     "abrechnung": {
       "id": "KAFFEE-20261117-1794940496054",
       "spender": "Uwe",
@@ -15,9 +15,9 @@
       "bestaetigtVon": "Admin – Zahlung und lokale Abbuchung bestätigt",
       "bestaetigungQuelle": "Manuell im Repository bestätigt"
     },
-    "aktionsId": "KAFFEE-20261124-142629-7-SOCJHK",
-    "sperreBis": "2026-11-25T06:00:00+01:00",
-    "freigabeZeitpunkt": "2026-11-24T14:26:29+01:00",
+    "aktionsId": "KAFFEE-20261125-060838-6-M2SPS8",
+    "sperreBis": "2026-11-26T06:00:00+01:00",
+    "freigabeZeitpunkt": "2026-11-25T06:08:38+01:00",
     "automatischFreigegeben": true
   },
   "nachricht": {
@@ -63,10 +63,10 @@
   },
   "emailKontingent": {
     "monat": "2026-11",
-    "anzahl": 4,
+    "anzahl": 6,
     "limit": 200,
     "gesperrt": false,
-    "aktualisiert": "2026-11-24T18:23:44.114254+01:00",
+    "aktualisiert": "2026-11-25T06:43:59.869298+01:00",
     "quelle": "Yahoo-Postfach"
   },
   "happyHour": {
