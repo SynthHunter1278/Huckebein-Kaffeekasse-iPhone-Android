@@ -126,6 +126,24 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(entry["name"], "Testperson")
         self.assertEqual(entry["notification_id"], "FREE-123")
 
+
+    def test_actual_hans_huckebein_free_coffee_email_format(self):
+        msg = make_mail(
+            "Neue Meldung aus der Hans Huckebein Kaffeekasse",
+            "Meldung / Buchung:\\n"
+            "KAFFEEAKTION GRATISENTNAHME | 1 Automatenkaffee | Aktions-ID: KAFFEE-20261125-060838-6-M2SPS8 | Buchungsnummer: GEB-KAFFEE-20261125055450-RHVT3B\\n\\n"
+            "Teilnehmer:\\nUwe Töbermann\\n\\n"
+            "Zeitpunkt:\\n25.11.2026, 06:54:51\\n\\n"
+            "Buchungs- bzw. Meldungsnummer:\\nGEB-KAFFEE-20261125055450-RHVT3B\\n\\n"
+            "Gesendet von:\\nHans Huckebein Kaffeekasse",
+        )
+        entry, reason = sponsor_mail.parse_free_coffee_redemption(msg, 990)
+        self.assertEqual(reason, "")
+        self.assertEqual(entry["name"], "Uwe Töbermann")
+        self.assertEqual(entry["action_id"], "KAFFEE-20261125-060838-6-M2SPS8")
+        self.assertEqual(entry["notification_id"], "GEB-KAFFEE-20261125055450-RHVT3B")
+        self.assertEqual(entry["created_at"], "2026-11-25T06:54:51+01:00")
+
     def test_free_coffee_without_campaign_id_is_not_counted(self):
         msg = make_mail(
             "KAFFEEKASSE – KAFFEEAKTION – GRATISENTNAHME",
