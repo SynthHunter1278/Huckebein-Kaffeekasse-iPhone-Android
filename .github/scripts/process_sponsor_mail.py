@@ -595,6 +595,11 @@ def main():
     paypal_log = load_json(paypal_log_path, {"entries": []})
     if not isinstance(paypal_log, dict) or not isinstance(paypal_log.get("entries"), list):
         paypal_log = {"entries": []}
+    paypal_archive = load_json(ROOT / "paypal-archive.json", {"entries": []})
+    if not isinstance(paypal_archive, dict) or not isinstance(paypal_archive.get("entries"), list):
+        paypal_archive = {"entries": []}
+    # Archivierte PayPal-Einträge bleiben Teil der Dublettenprüfung.
+    paypal_seen_entries = paypal_log["entries"] + paypal_archive["entries"]
     free_coffee_log_path = ROOT / "free-coffee-log.json"
     free_coffee_log = load_json(free_coffee_log_path, {"entries": []})
     if not isinstance(free_coffee_log, dict) or not isinstance(free_coffee_log.get("entries"), list):
@@ -764,7 +769,7 @@ def main():
             paypal_entry, paypal_reason = parse_paypal_decision(msg, uid)
             if paypal_entry:
                 stable_request_id = str(paypal_entry.get("request_id", "")).strip()
-                if not is_duplicate_paypal_entry(paypal_entry, paypal_log["entries"]):
+                if not is_duplicate_paypal_entry(paypal_entry, paypal_seen_entries):
                     paypal_log["entries"].append(paypal_entry)
                     paypal_log["entries"] = paypal_log["entries"][-1000:]
                     print(f"PayPal-Protokoll: {paypal_entry['name']} – {paypal_entry['amount']:.2f} EUR – {paypal_entry['status']}")
