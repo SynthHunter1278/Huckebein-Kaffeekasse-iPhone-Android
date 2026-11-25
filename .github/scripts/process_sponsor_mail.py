@@ -187,6 +187,7 @@ def parse_paypal_decision(msg, uid):
     if "ZAHLUNG VOM TEILNEHMER" not in user_value.upper():
         user_value = subject_participant
 
+    normalized = status_source
     if "ALS NICHT BEZAHLT BESTAETIGT" in normalized:
         payment_status = "NICHT BEZAHLT"
     elif "ALS BEZAHLT BESTAETIGT" in normalized:
