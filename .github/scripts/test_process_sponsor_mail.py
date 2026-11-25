@@ -95,11 +95,11 @@ class SponsorMailTests(unittest.TestCase):
     def test_actual_hans_huckebein_breakfast_email_format(self):
         msg = make_mail(
             "Neue Meldung aus der Hans Huckebein Kaffeekasse",
-            "Meldung / Buchung:\\nFreitagsfrühstück\\n\\n"
-            "Teilnehmer:\\nUwe Töbermann\\n\\n"
-            "Zeitpunkt:\\n25.11.2026, 06:15:21\\n\\n"
-            "Buchungs- bzw. Meldungsnummer:\\nMAIL-20261125051521-CR0RUN\\n\\n"
-            "Gesendet von:\\nHans Huckebein Kaffeekasse",
+            "Meldung / Buchung:\nFreitagsfrühstück\n\n"
+            "Teilnehmer:\nUwe Töbermann\n\n"
+            "Zeitpunkt:\n25.11.2026, 06:15:21\n\n"
+            "Buchungs- bzw. Meldungsnummer:\nMAIL-20261125051521-CR0RUN\n\n"
+            "Gesendet von:\nHans Huckebein Kaffeekasse",
         )
         entry, reason = sponsor_mail.parse_breakfast_booking(msg, 991)
         self.assertEqual(reason, "")
