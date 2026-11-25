@@ -213,9 +213,13 @@ def parse_paypal_decision(msg, uid):
         except Exception:
             decision_time = datetime.now(TZ)
 
+    request_id_raw = field(body, ["request_id", "Anfrage-ID"])
+    request_match = re.search(r"\\b(PP-[A-Za-z0-9_-]{6,100})\\b", request_id_raw)
+    request_id = request_match.group(1) if request_match else request_id_raw.strip()
+
     return {
-        "id": str(uid),
-        "request_id": field(body, ["request_id", "Anfrage-ID"]),
+        "id": request_id or str(uid),
+        "request_id": request_id,
         "name": name or "Unbekannter Teilnehmer",
         "amount": amount,
         "status": payment_status,
@@ -303,6 +307,22 @@ def is_signup_time_valid(request_time, now):
         local_request.date() == local_now.date()
         and START <= local_request.time().replace(tzinfo=None) < END
     )
+
+
+def get_uidvalidity(mail):
+    """Return the selected mailbox UIDVALIDITY, or None if Yahoo does not expose it."""
+    try:
+        response_type, response_data = mail.response("UIDVALIDITY")
+        if response_type and str(response_type).upper() == "UIDVALIDITY" and response_data:
+            match = re.search(rb"(\\d+)", b" ".join(
+                value if isinstance(value, bytes) else str(value).encode()
+                for value in response_data
+            ))
+            if match:
+                return match.group(1).decode("ascii")
+    except Exception as exc:
+        print(f"WARNUNG: Yahoo UIDVALIDITY konnte nicht gelesen werden: {exc}")
+    return None
 
 
 def search_relevant_uids(mail, last_uid):
@@ -469,9 +489,30 @@ def main():
     mail = imaplib.IMAP4_SSL("imap.mail.yahoo.com", 993)
     try:
         mail.login(account, password)
-        mail.select("INBOX")
+        select_status, _ = mail.select("INBOX")
+        if select_status != "OK":
+            raise RuntimeError("Yahoo-INBOX konnte nicht geöffnet werden")
+        current_uidvalidity = get_uidvalidity(mail)
+        previous_uidvalidity = str(state.get("uidvalidity", "")).strip()
+        uidvalidity_changed = bool(
+            current_uidvalidity and previous_uidvalidity
+            and current_uidvalidity != previous_uidvalidity
+        )
+        if current_uidvalidity:
+            if uidvalidity_changed:
+                print(
+                    "Yahoo UIDVALIDITY hat sich geändert "
+                    f"({previous_uidvalidity} -> {current_uidvalidity}); "
+                    "Nachrichten werden erneut geprüft, stabile IDs verhindern Duplikate."
+                )
+                state["last_uid"] = 0
+            elif not previous_uidvalidity:
+                print(f"Yahoo UIDVALIDITY erstmals erfasst: {current_uidvalidity}")
+            state["uidvalidity"] = current_uidvalidity
+        else:
+            print("WARNUNG: UIDVALIDITY fehlt; gespeicherter UID-Stand wird vorsichtshalber beibehalten.")
         diagnostic = False  # Live processing enabled after redacted diagnostics
-        uids = search_relevant_uids(mail, 0 if diagnostic else state.get("last_uid", 0))
+        uids = search_relevant_uids(mail, 0 if diagnostic or uidvalidity_changed else state.get("last_uid", 0))
         if diagnostic:
             uids = uids[-30:]
             print(f"Diagnosemodus: {len(uids)} neueste passende Nachrichten werden nur anhand ihrer Kopfzeilen geprüft; es wird nichts verändert.")
@@ -588,18 +629,46 @@ def main():
 
             paypal_entry, paypal_reason = parse_paypal_decision(msg, uid)
             if paypal_entry:
-                if not any(str(item.get("id")) == paypal_entry["id"] for item in paypal_log["entries"] if isinstance(item, dict)):
+                stable_request_id = str(paypal_entry.get("request_id", "")).strip()
+                is_duplicate = any(
+                    (
+                        stable_request_id
+                        and str(item.get("request_id", "")).strip() == stable_request_id
+                    )
+                    or (
+                        not stable_request_id
+                        and str(item.get("id", "")) == paypal_entry["id"]
+                    )
+                    for item in paypal_log["entries"] if isinstance(item, dict)
+                )
+                if not is_duplicate:
                     paypal_log["entries"].append(paypal_entry)
                     paypal_log["entries"] = paypal_log["entries"][-1000:]
                     print(f"PayPal-Protokoll: {paypal_entry['name']} – {paypal_entry['amount']:.2f} EUR – {paypal_entry['status']}")
+                else:
+                    print(f"UID {uid}: PayPal-Aufladung {stable_request_id or paypal_entry['id']} bereits protokolliert")
                 continue
 
             breakfast_entry, breakfast_reason = parse_breakfast_booking(msg, uid)
             if breakfast_entry:
-                if not any(str(item.get("id")) == breakfast_entry["id"] for item in breakfast_log["entries"] if isinstance(item, dict)):
+                stable_booking_id = str(breakfast_entry.get("notification_id", "")).strip()
+                is_duplicate = any(
+                    (
+                        stable_booking_id
+                        and str(item.get("notification_id", "")).strip() == stable_booking_id
+                    )
+                    or (
+                        not stable_booking_id
+                        and str(item.get("id", "")) == breakfast_entry["id"]
+                    )
+                    for item in breakfast_log["entries"] if isinstance(item, dict)
+                )
+                if not is_duplicate:
                     breakfast_log["entries"].append(breakfast_entry)
                     breakfast_log["entries"] = breakfast_log["entries"][-1000:]
                     print(f"Frühstücksprotokoll: {breakfast_entry['name']} – {breakfast_entry['created_at']}")
+                else:
+                    print(f"UID {uid}: Frühstücksbuchung {stable_booking_id or breakfast_entry['id']} bereits protokolliert")
                 continue
 
             confirmation, confirmation_reason = parse_confirmation(msg, uid)
