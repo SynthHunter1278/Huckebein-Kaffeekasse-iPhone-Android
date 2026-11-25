@@ -29,19 +29,28 @@ class SponsorMailTests(unittest.TestCase):
             "item: Freitagsfrühstück",
         )
         current.replace_header("Date", "Tue, 24 Nov 2026 11:00:00 +0100")
+        current.replace_header("To", "Kaffeekasse <toeber2000@yahoo.de>")
         previous = make_mail("KAFFEEKASSE – TEST", "item: test")
         previous.replace_header("Date", "Sat, 31 Oct 2026 11:00:00 +0200")
+        previous.replace_header("To", "Kaffeekasse <toeber2000@yahoo.de>")
         unrelated = make_mail("Private Nachricht", "Hallo")
         unrelated.replace_header("Date", "Tue, 24 Nov 2026 11:00:00 +0100")
-        self.assertTrue(sponsor_mail.is_email_from_this_month(current, now))
-        self.assertFalse(sponsor_mail.is_email_from_this_month(previous, now))
-        self.assertFalse(sponsor_mail.is_email_from_this_month(unrelated, now))
+        unrelated.replace_header("To", "Kaffeekasse <toeber2000@yahoo.de>")
+        self.assertTrue(sponsor_mail.is_email_from_this_month(current, now, "toeber2000@yahoo.de"))
+        self.assertFalse(sponsor_mail.is_email_from_this_month(previous, now, "toeber2000@yahoo.de"))
+        self.assertFalse(sponsor_mail.is_email_from_this_month(unrelated, now, "toeber2000@yahoo.de"))
+
+    def test_notification_is_trusted_by_recipient_mailbox_not_sender(self):
+        msg = make_mail("KAFFEEKASSE – BUCHUNG", "user: Testperson", sender="teilnehmer@example.org")
+        msg.replace_header("To", "Kassenverwaltung <toeber2000@yahoo.de>")
+        self.assertTrue(sponsor_mail.is_message_for_account(msg, "toeber2000@yahoo.de"))
+        self.assertFalse(sponsor_mail.is_message_for_account(msg, "anderes-postfach@yahoo.de"))
 
     def test_sender_is_parsed_and_normalized(self):
         msg = make_mail("Test", "Text")
         self.assertEqual(
             sponsor_mail.parseaddr(msg.get("From", ""))[1].strip().casefold(),
-            sponsor_mail.ALLOWED_SENDER,
+            "toeber2000@yahoo.de",
         )
 
     def test_valid_sponsor_request(self):

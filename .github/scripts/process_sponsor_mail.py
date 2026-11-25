@@ -8,7 +8,7 @@ import re
 import subprocess
 from datetime import datetime, time, timedelta
 from email.header import decode_header
-from email.utils import parseaddr, parsedate_to_datetime
+from email.utils import getaddresses, parseaddr, parsedate_to_datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -18,7 +18,6 @@ STATE = ROOT / ".github" / "state" / "sponsor-mail-state.json"
 TZ = ZoneInfo("Europe/Berlin")
 START = time(6, 0)
 END = time(15, 0)
-ALLOWED_SENDER = "toeber2000@yahoo.de"
 IMAP_RELEVANT_SEARCH = 'OR SUBJECT "KAFFEEKASSE" OR TEXT "KAFFEEKASSE" TEXT "ZAHLUNG VOM TEILNEHMER"'
 
 def load_json(path, default):
@@ -61,6 +60,17 @@ def message_text(msg):
                     .replace("&quot;", '"').replace("&#39;", "'"))
         chunks.append(text)
     return "\n".join(chunks)
+
+def is_message_for_account(msg, account):
+    """Trust notifications delivered to the configured Yahoo inbox, not a user-controlled From address."""
+    expected = str(account or "").strip().casefold()
+    if not expected:
+        return False
+    headers = []
+    for header in ("To", "Delivered-To", "X-Original-To", "Envelope-To"):
+        headers.extend(msg.get_all(header, []))
+    recipients = {address.strip().casefold() for _, address in getaddresses(headers) if address.strip()}
+    return expected in recipients
 
 def field(text, names):
     for name in names:
@@ -300,10 +310,9 @@ def search_relevant_uids(mail, last_uid):
         if value.isdigit() and int(value) > int(last_uid)
     ]
 
-def is_email_from_this_month(msg, now):
+def is_email_from_this_month(msg, now, account):
     """Count one delivered Kaffeekassen notification in the current Berlin month."""
-    sender = parseaddr(msg.get("From", ""))[1].strip().casefold()
-    if sender != ALLOWED_SENDER:
+    if not is_message_for_account(msg, account):
         return False
     subject = decode_header_value(msg.get("Subject", ""))
     body = message_text(msg)
@@ -320,7 +329,7 @@ def is_email_from_this_month(msg, now):
     return sent_at.year == now.year and sent_at.month == now.month
 
 
-def count_monthly_email_notifications(mail, now):
+def count_monthly_email_notifications(mail, now, account):
     """Recount this month's delivered Kaffeekassen copies in Yahoo, not local device counters."""
     status, data = mail.uid("search", None, IMAP_RELEVANT_SEARCH)
     if status != "OK":
@@ -335,7 +344,7 @@ def count_monthly_email_notifications(mail, now):
         if fetch_status != "OK" or not fetched or not isinstance(fetched[0], tuple):
             raise RuntimeError(f"E-Mail-Kopfzeile UID {raw_uid.decode('ascii')} konnte nicht gelesen werden")
         msg = email.message_from_bytes(fetched[0][1])
-        if is_email_from_this_month(msg, now):
+        if is_email_from_this_month(msg, now, account):
             total += 1
     return total
 
@@ -459,7 +468,7 @@ def main():
 
         # Monatlicher Zähler: vollständiger Abgleich mit den zugestellten
         # Kaffeekassen-Kopien im Yahoo-Postfach, nicht mit Geräte-LocalStorage.
-        monthly_email_count = count_monthly_email_notifications(mail, now)
+        monthly_email_count = count_monthly_email_notifications(mail, now, account)
         month_key = now.strftime("%Y-%m")
         quota = config.get("emailKontingent")
         if not isinstance(quota, dict):
@@ -534,9 +543,8 @@ def main():
             # Fremdversand nicht bei jedem 5-Minuten-Lauf erneut geprüft wird.
             state["last_uid"] = uid
             changed = True
-            sender = parseaddr(msg.get("From", ""))[1].strip().casefold()
-            if sender != ALLOWED_SENDER:
-                print(f"UID {uid}: passende Betreff-/Textnachricht, aber Absender {sender or '(unbekannt)'} nicht freigegeben")
+            if not is_message_for_account(msg, account):
+                print(f"UID {uid}: passende Kassen-Markierung, aber Empfänger gehört nicht zum konfigurierten Yahoo-Postfach")
                 continue
             free_coffee_entry, free_coffee_reason = parse_free_coffee_redemption(msg, uid)
             if free_coffee_entry:
