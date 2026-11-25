@@ -352,10 +352,12 @@ def search_relevant_uids(mail, last_uid):
     status, data = mail.uid("search", None, IMAP_RELEVANT_SEARCH)
     if status != "OK":
         raise RuntimeError("Yahoo-Postfach konnte nicht nach Kaffeekassen-Nachrichten durchsucht werden")
-    return [
+    found = [
         int(value) for value in data[0].split()
         if value.isdigit() and int(value) > int(last_uid)
     ]
+    print(f"DEBUG main IMAP search UIDs: {found}")
+    return found
 
 def is_email_from_this_month(msg, now, account):
     """Count one delivered Kaffeekassen notification in the current Berlin month."""
@@ -384,6 +386,7 @@ def count_monthly_email_notifications(mail, now, account):
         return None
     total = 0
     unreadable = 0
+    print(f"DEBUG quota IMAP search UIDs: {[value.decode('ascii', errors='replace') for value in data[0].split()]}")
     for raw_uid in data[0].split():
         if not raw_uid.isdigit():
             continue
@@ -540,7 +543,7 @@ def main():
             state["uidvalidity"] = current_uidvalidity
         else:
             print("WARNUNG: UIDVALIDITY fehlt; gespeicherter UID-Stand wird vorsichtshalber beibehalten.")
-        diagnostic = False  # Live processing enabled after redacted diagnostics
+        diagnostic = True  # Temporary read-only parser diagnostics
         uids = search_relevant_uids(mail, 0 if diagnostic or uidvalidity_replay_required else state.get("last_uid", 0))
         if diagnostic:
             uids = uids[-30:]
