@@ -2131,7 +2131,10 @@ function executePaypalDeposit(betrag) {
 
         if (paid) {
             const currentDay = new Date().getDate();
-            const code = (Number(request.amount) * CODE_MULTIPLIER) + (currentDay * DAY_MULTIPLIER) + CODE_OFFSET;
+            // Der Prüfer rechnet in Cent. Deshalb muss auch der Erzeuger den
+            // Eurobetrag zuerst in Cent umwandeln, bevor multipliziert wird.
+            const amountCents = Math.round(Number(request.amount) * 100);
+            const code = (amountCents * CODE_MULTIPLIER) + (currentDay * DAY_MULTIPLIER) + CODE_OFFSET;
             try {
                 localStorage.setItem("kaffeekasse_pending_code", String(code));
                 localStorage.removeItem("kaffeekasse_pending_paypal");
