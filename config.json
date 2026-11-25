@@ -50,7 +50,7 @@
     }
   },
   "paypal": {
-    "aktiv": true
+    "aktiv": false
   },
   "letzteNachricht": {
     "text": "Benutzt bitte eure App",
