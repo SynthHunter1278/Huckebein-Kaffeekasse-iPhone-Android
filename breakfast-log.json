@@ -1,3 +1,25 @@
 {
-  "entries": []
+  "entries": [
+    {
+      "id": "724293",
+      "notification_id": "",
+      "name": "\"Automaten Kaffee\", preis: 0.50 },",
+      "item": "Freitagsfrühstück",
+      "created_at": "2026-10-26T09:20:39+01:00"
+    },
+    {
+      "id": "724297",
+      "notification_id": "",
+      "name": "\"Automaten Kaffee\", preis: 0.50 },",
+      "item": "Freitagsfrühstück",
+      "created_at": "2026-10-26T11:30:53+01:00"
+    },
+    {
+      "id": "724305",
+      "notification_id": "",
+      "name": "\"Automaten Kaffee\", preis: 0.50 },",
+      "item": "barcodeListe[decodedText];",
+      "created_at": "2026-10-26T12:39:28+01:00"
+    }
+  ]
 }
