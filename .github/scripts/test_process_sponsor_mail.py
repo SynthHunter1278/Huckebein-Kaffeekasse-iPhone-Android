@@ -103,7 +103,7 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(entry["name"], "Testperson")
         self.assertEqual(entry["notification_id"], "FREE-COFFEE-123")
         self.assertEqual(entry["action_id"], "KAFFEE-20261116-123")
-        self.assertEqual(entry["item"], "KAFFEEAKTION GRATISENTNAHME | 1 Automatenkaffee | Aktions-ID: KAFFEE-20261116-123")
+        self.assertEqual(entry["item"], "KAFFEEAKTION GRATISENTNAHME | 1 Automatenkaffee")
 
 
     def test_inline_emailjs_fields_are_readable(self):
