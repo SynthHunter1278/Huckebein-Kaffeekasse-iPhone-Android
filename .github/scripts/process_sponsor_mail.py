@@ -586,18 +586,26 @@ def main():
     mail = imaplib.IMAP4_SSL("imap.mail.yahoo.com", 993)
     try:
         mail.login(account, password)
-        select_status, _ = mail.select("INBOX")
+        mailbox_name = find_hans_huckebein_mailbox(mail)
+        previous_mailbox = str(state.get("mailbox", "INBOX")).strip()
+        select_status, _ = mail.select(mailbox_name)
         if select_status != "OK":
-            raise RuntimeError("Yahoo-INBOX konnte nicht geöffnet werden")
+            raise RuntimeError(f"Yahoo-Kassenordner konnte nicht geöffnet werden: {mailbox_name}")
+        print(f"Yahoo-Kassenordner ausgewählt: {mailbox_name}")
         current_uidvalidity = get_uidvalidity(mail)
         previous_uidvalidity = str(state.get("uidvalidity", "")).strip()
+        mailbox_changed = previous_mailbox != mailbox_name
+        if mailbox_changed:
+            print(f"IMAP-Ordner gewechselt ({previous_mailbox} -> {mailbox_name}); Nachrichten werden einmalig erneut geprüft.")
+            state["last_uid"] = 0
+            state["mailbox"] = mailbox_name
         uidvalidity_state_changed = bool(current_uidvalidity and current_uidvalidity != previous_uidvalidity)
         uidvalidity_changed = bool(
             current_uidvalidity and previous_uidvalidity
             and current_uidvalidity != previous_uidvalidity
         )
         uid_namespace_unverified = bool(current_uidvalidity and not previous_uidvalidity)
-        uidvalidity_replay_required = uidvalidity_changed or uid_namespace_unverified
+        uidvalidity_replay_required = mailbox_changed or uidvalidity_changed or uid_namespace_unverified
         if current_uidvalidity:
             if uidvalidity_changed:
                 print(
@@ -623,7 +631,7 @@ def main():
         else:
             print(f"{len(uids)} passende Kaffeekassen-Nachrichten seit dem letzten Lauf gefunden.")
         processed = set(state.get("processed_ids", []))
-        changed = uidvalidity_state_changed
+        changed = uidvalidity_state_changed or mailbox_changed
         sponsor_activated = False
 
         # Monatlicher Zähler: vollständiger Abgleich mit den zugestellten
