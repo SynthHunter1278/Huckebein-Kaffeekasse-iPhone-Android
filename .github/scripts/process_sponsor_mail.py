@@ -147,13 +147,13 @@ def parse_free_coffee_redemption(msg, uid):
     if not name or name.lower() in ("anonymer teilnehmer", "unbekannter teilnehmer"):
         return None, "Teilnehmername fehlt"
 
-    item = field(body, ["item", "Artikel", "Produkt"])
+    item = field(body, ["item", "Artikel", "Produkt", "Meldung / Buchung"])
     action_match = re.search(r"Aktions-ID\s*:\s*([A-Za-z0-9_-]{3,100})", combined, re.I)
     if not action_match:
         return None, "Aktions-ID fehlt – keine zuordenbare Spendenaktion"
     action_id = action_match.group(1)
     booking_id = field(body, ["notification_id", "Buchungsnummer", "Anmelde-ID", "Buchungs- bzw. Meldungsnummer"])
-    stamp = field(body, ["timestamp", "Zeitstempel", "Datum"])
+    stamp = field(body, ["timestamp", "Zeitstempel", "Datum", "Zeitpunkt"])
     redeemed_at = None
     if stamp:
         for fmt in ("%d.%m.%Y, %H:%M:%S", "%d.%m.%Y, %H:%M", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M"):
