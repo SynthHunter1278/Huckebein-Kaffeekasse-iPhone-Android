@@ -455,7 +455,7 @@ def main():
     try:
         mail.login(account, password)
         mail.select("INBOX")
-        diagnostic = False  # Live processing enabled after diagnostic inspection
+        diagnostic = True  # Temporary redacted diagnostics; no repository writes
         uids = search_relevant_uids(mail, 0 if diagnostic else state.get("last_uid", 0))
         if diagnostic:
             uids = uids[-30:]
@@ -520,23 +520,36 @@ def main():
                 raise RuntimeError(f"E-Mail UID {uid} konnte nicht gelesen werden")
             msg = email.message_from_bytes(fetched[0][1])
             if diagnostic:
-                sender_debug = parseaddr(msg.get("From", ""))[1].strip().casefold()
-                reply_debug = parseaddr(msg.get("Reply-To", ""))[1].strip().casefold()
-                to_debug = parseaddr(msg.get("To", ""))[1].strip().casefold()
                 subject_debug = decode_header_value(msg.get("Subject", ""))
-                request_debug, request_reason = parse_request(msg, uid)
-                confirmation_debug = parse_confirmation(msg, uid)
-                if confirmation_debug:
-                    confirm_debug, confirm_reason = confirmation_debug
-                else:
-                    confirm_debug, confirm_reason = None, "Keine Abrechnungsbestätigung"
-                if request_debug:
-                    parsed_debug = f"REQUEST name={request_debug['name']!r} id={request_debug['request_id']!r} at={request_debug['requested_at'].isoformat()}"
-                elif confirm_debug:
-                    parsed_debug = f"CONFIRM id={confirm_debug.get('settlement_id')!r} name={confirm_debug.get('name')!r}"
-                else:
-                    parsed_debug = f"NO_MATCH request={request_reason!r} confirmation={confirm_reason!r}"
-                print(f"DIAG UID {uid}: FROM={sender_debug!r} REPLY_TO={reply_debug!r} TO={to_debug!r} SUBJECT={subject_debug!r} {parsed_debug}")
+                body_debug = message_text(msg)
+                combined_debug = (subject_debug + "\n" + body_debug).upper().replace("Ü", "UE")
+                checks = {
+                    "KAFFEEKASSE": "KAFFEEKASSE" in combined_debug,
+                    "KAFFEEAKTION": "KAFFEEAKTION" in combined_debug,
+                    "GRATISENTNAHME": "GRATISENTNAHME" in combined_debug,
+                    "FRUEHSTUECKSBUCHUNG": "FRUEHSTUECKSBUCHUNG" in combined_debug or "FREITAGSFRUEHSTUECK" in combined_debug,
+                    "PAYPAL_STATUS": "ZAHLUNG VOM TEILNEHMER" in combined_debug,
+                    "SPENDERANMELDUNG": "SPENDERANMELDUNG" in combined_debug
+                }
+                fields_present = {
+                    key: bool(field(body_debug, names))
+                    for key, names in {
+                        "user": ["user", "Name", "Teilnehmer", "App-Name"],
+                        "item": ["item", "Artikel", "Produkt"],
+                        "timestamp": ["timestamp", "Zeitstempel", "Datum"],
+                        "notification_id": ["notification_id", "Buchungsnummer", "Anmelde-ID"],
+                        "amount": ["amount", "Betrag"],
+                        "request_id": ["request_id", "Anfrage-ID"]
+                    }.items()
+                }
+                results = {
+                    "free_coffee": parse_free_coffee_redemption(msg, uid)[1],
+                    "paypal": parse_paypal_decision(msg, uid)[1],
+                    "breakfast": parse_breakfast_booking(msg, uid)[1],
+                    "sponsor": parse_request(msg, uid)[1],
+                    "recipient_match": is_message_for_account(msg, account)
+                }
+                print(f"DIAG UID {uid}: checks={checks} fields={fields_present} results={results}")
                 continue
             # Nur Nachrichten mit Kaffeekassen-Bezug werden gesucht. Auch deren UID
             # wird markiert, wenn der Absender nicht freigegeben ist, damit derselbe
@@ -732,7 +745,7 @@ def main():
 
         state["pending_requests"] = pending_requests
         state["processed_ids"] = sorted(processed)[-1000:]
-        if changed:
+        if changed and not diagnostic:
             CONFIG.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             STATE.parent.mkdir(parents=True, exist_ok=True)
             STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
