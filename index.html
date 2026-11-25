@@ -1821,13 +1821,15 @@ function getCalendarWeek(date) {
     }
 
     function sendBackgroundEmail(itemName, subject = "KAFFEEKASSE – BUCHUNG", notificationId = "") {
-        const templateParams = {
-            subject,
-            item: itemName,
-            user: benutzerName,
-            timestamp: new Date().toLocaleString('de-DE'),
-            notification_id: notificationId || makeEventId("MAIL")
-        };
+        const eventId = notificationId || makeEventId("MAIL");
+        const timestamp = new Date().toLocaleString("de-DE");
+        const trackedEvent = /KAFFEEAKTION|FRÜHSTÜCKSBUCHUNG|FREITAGSFRÜHSTÜCK/i.test(subject + " " + itemName);
+        // Metadaten zusätzlich im Item-Feld mitsenden, falls EmailJS nur {{item}} rendert.
+        const structuredItem = trackedEvent
+            ? subject + " | " + itemName + " | user: " + benutzerName +
+              " | timestamp: " + timestamp + " | notification_id: " + eventId
+            : itemName;
+        const templateParams = { subject, item: structuredItem, user: benutzerName, timestamp, notification_id: eventId };
         queueEmailNotification(templateParams);
     }
 
@@ -2090,16 +2092,20 @@ function executePaypalDeposit(betrag) {
 
     function sendPaypalDecisionEmail(request, paid) {
         const decision = paid ? "ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT" : "ZAHLUNG VOM TEILNEHMER ALS NICHT BEZAHLT BESTÄTIGT";
+        const timestamp = new Date().toLocaleString("de-DE");
+        const amount = Number(request.amount).toFixed(2).replace(".", ",");
         const templateParams = {
             subject: "KAFFEEKASSE – PAYPAL-AUFLADUNG – STATUS",
-            user: `KAFFEEKASSE – ${request.user} – ${decision}`,
-            amount: Number(request.amount).toFixed(2).replace(".", ",") + " €",
-            timestamp: new Date().toLocaleString("de-DE"),
+            user: "KAFFEEKASSE – " + request.user + " – " + decision,
+            amount: amount + " € | user: KAFFEEKASSE – " + request.user + " – " + decision +
+                " | timestamp: " + timestamp + " | request_id: " + request.id,
+            item: "KAFFEEKASSE – PAYPAL-AUFLADUNG – STATUS | user: " + request.user +
+                " | amount: " + amount + " € | timestamp: " + timestamp + " | request_id: " + request.id,
+            timestamp,
             status: paid ? "BEZAHLT" : "NICHT BEZAHLT",
             request_id: request.id,
             request_timestamp: new Date(request.requestedAt).toLocaleString("de-DE")
         };
-
         if (!window.emailjs) {
             console.error("EmailJS ist nicht verfügbar; PayPal-Status konnte nicht per E-Mail gemeldet werden.");
             return Promise.reject(new Error("EmailJS ist nicht verfügbar."));

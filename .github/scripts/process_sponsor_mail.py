@@ -54,7 +54,7 @@ def message_text(msg):
         charset = part.get_content_charset() or "utf-8"
         text = payload.decode(charset, errors="replace")
         text = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", text)
-        text = re.sub(r"(?i)<br\s*/?>|</p>|</div>|</tr>", "\n", text)
+        text = re.sub(r"(?i)<br\s*/?>|</p>|</div>|</tr>|</td>|</th>|</li>", "\n", text)
         text = re.sub(r"<[^>]+>", " ", text)
         text = (text.replace("&nbsp;", " ").replace("&amp;", "&")
                     .replace("&quot;", '"').replace("&#39;", "'"))
@@ -73,8 +73,13 @@ def is_message_for_account(msg, account):
     return expected in recipients
 
 def field(text, names):
+    """Read key/value fields whether EmailJS renders them on separate lines or inline."""
     for name in names:
-        match = re.search(r"(?im)^\s*" + re.escape(name) + r"\s*[:=]\s*(.*?)\s*$", text)
+        pattern = (
+            r"(?i)(?:^|[\s|;])" + re.escape(name)
+            + r"\s*[:=]\s*(.*?)(?=(?:\s*[|;]\s*[A-Za-z_][A-Za-z0-9_-]*\s*[:=])|[\r\n]|$)"
+        )
+        match = re.search(pattern, text)
         if match:
             return match.group(1).strip()
     return ""
@@ -84,7 +89,7 @@ def parse_breakfast_booking(msg, uid):
     body = message_text(msg)
     subject = decode_header_value(msg.get("Subject", ""))
     item = field(body, ["item", "Artikel", "Produkt"])
-    normalized = (subject + "\n" + item).upper().replace("Ü", "UE")
+    normalized = (subject + "\n" + body).upper().replace("Ü", "UE")
     if "FRUEHSTUECKSBUCHUNG" not in normalized and "FREITAGSFRUEHSTUECK" not in normalized:
         return None, "Keine Frühstücksbuchung"
 
@@ -455,7 +460,7 @@ def main():
     try:
         mail.login(account, password)
         mail.select("INBOX")
-        diagnostic = True  # Temporary redacted diagnostics; no repository writes
+        diagnostic = False  # Live processing enabled after redacted diagnostics
         uids = search_relevant_uids(mail, 0 if diagnostic else state.get("last_uid", 0))
         if diagnostic:
             uids = uids[-30:]

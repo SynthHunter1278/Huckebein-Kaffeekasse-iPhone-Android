@@ -106,6 +106,16 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(entry["item"], "KAFFEEAKTION GRATISENTNAHME | 1 Automatenkaffee | Aktions-ID: KAFFEE-20261116-123")
 
 
+    def test_inline_emailjs_fields_are_readable(self):
+        msg = make_mail(
+            "KAFFEEKASSE – KAFFEEAKTION – GRATISENTNAHME",
+            "item: KAFFEEAKTION GRATISENTNAHME | Aktions-ID: KAFFEE-20261125-ABC12345 | user: Testperson | timestamp: 25.11.2026, 12:00:00 | notification_id: FREE-123"
+        )
+        entry, reason = sponsor_mail.parse_free_coffee_redemption(msg, 777)
+        self.assertEqual(reason, "")
+        self.assertEqual(entry["name"], "Testperson")
+        self.assertEqual(entry["notification_id"], "FREE-123")
+
     def test_free_coffee_without_campaign_id_is_not_counted(self):
         msg = make_mail(
             "KAFFEEKASSE – KAFFEEAKTION – GRATISENTNAHME",
