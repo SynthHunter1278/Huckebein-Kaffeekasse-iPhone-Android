@@ -70,10 +70,12 @@
     "quelle": "Yahoo-Postfach"
   },
   "happyHour": {
-    "aktiv": false,
+    "aktiv": true,
     "datum": "2026-11-25",
     "start": "10:00",
     "ende": "11:00",
-    "artikel": {}
+    "artikel": {
+      "btn-kaffee": 5
+    }
   }
 }
