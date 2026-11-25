@@ -510,6 +510,7 @@ def main():
             raise RuntimeError("Yahoo-INBOX konnte nicht geöffnet werden")
         current_uidvalidity = get_uidvalidity(mail)
         previous_uidvalidity = str(state.get("uidvalidity", "")).strip()
+        uidvalidity_state_changed = bool(current_uidvalidity and current_uidvalidity != previous_uidvalidity)
         uidvalidity_changed = bool(
             current_uidvalidity and previous_uidvalidity
             and current_uidvalidity != previous_uidvalidity
@@ -535,7 +536,7 @@ def main():
         else:
             print(f"{len(uids)} passende Kaffeekassen-Nachrichten seit dem letzten Lauf gefunden.")
         processed = set(state.get("processed_ids", []))
-        changed = False
+        changed = uidvalidity_state_changed
         sponsor_activated = False
 
         # Monatlicher Zähler: vollständiger Abgleich mit den zugestellten
