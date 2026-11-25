@@ -77,23 +77,29 @@ def is_message_for_account(msg, account):
     return expected in recipients
 
 def field(text, names):
-    """Read key/value fields whether EmailJS renders them on separate lines or inline."""
+    """Read key/value fields whether EmailJS renders them inline or on the next line."""
     for name in names:
-        pattern = (
-            r"(?i)(?:^|[\s|;])" + re.escape(name)
-            + r"\s*[:=]\s*(.*?)(?=(?:\s*[|;]\s*[A-Za-z_][A-Za-z0-9_-]*\s*[:=])|[\r\n]|$)"
-        )
-        match = re.search(pattern, text)
-        if match:
-            value = match.group(1).strip()
+        # First handle labelled lines. The value may be after the colon or on
+        # the next non-empty line (the real Hans Huckebein notification format).
+        line_pattern = r"(?im)^\\s*" + re.escape(name) + r"\\s*[:=]\\s*([^\\r\\n]*)"
+        line_match = re.search(line_pattern, text)
+        if line_match:
+            value = line_match.group(1).strip()
             if value:
                 return value
-            # Some notification templates put the field value on the next line:
-            # "Teilnehmer:\\nUwe" instead of "Teilnehmer: Uwe".
-            following_lines = text[match.end():].splitlines()
+            following_lines = text[line_match.end():].splitlines()
             for line in following_lines:
                 if line.strip():
                     return line.strip()
+
+        # EmailJS may also put several key/value pairs on one line.
+        pattern = (
+            r"(?i)(?:^|[\\s|;])" + re.escape(name)
+            + r"\\s*[:=]\\s*(.*?)(?=(?:\\s*[|;]\\s*[A-Za-z_][A-Za-z0-9_-]*\\s*[:=])|[\\r\\n]|$)"
+        )
+        match = re.search(pattern, text)
+        if match and match.group(1).strip():
+            return match.group(1).strip()
     return ""
 
 def parse_breakfast_booking(msg, uid):
