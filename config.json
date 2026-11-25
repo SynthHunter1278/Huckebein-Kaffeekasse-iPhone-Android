@@ -63,10 +63,10 @@
   },
   "emailKontingent": {
     "monat": "2026-11",
-    "anzahl": 6,
+    "anzahl": 0,
     "limit": 200,
     "gesperrt": false,
-    "aktualisiert": "2026-11-25T06:43:59.869298+01:00",
+    "aktualisiert": "2026-11-25T07:41:24.865170+01:00",
     "quelle": "Yahoo-Postfach"
   },
   "happyHour": {
