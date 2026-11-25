@@ -21,6 +21,7 @@ END = time(15, 0)
 IMAP_RELEVANT_SEARCHES = (
     'OR SUBJECT "KAFFEEKASSE" OR TEXT "KAFFEEKASSE" TEXT "ZAHLUNG VOM TEILNEHMER"',
     'SUBJECT "PayPal"',
+    'TEXT "Hans Huckebein Kaffeekasse"',
 )
 
 def load_json(path, default):
@@ -124,7 +125,7 @@ def parse_breakfast_booking(msg, uid):
         except Exception:
             booking_time = datetime.now(TZ)
 
-    notification_id = field(body, ["notification_id", "Anmelde-ID", "Buchungsnummer"])
+    notification_id = field(body, ["notification_id", "Anmelde-ID", "Buchungsnummer", "Buchungs- bzw. Meldungsnummer"])
     return {
         "id": str(uid),
         "notification_id": notification_id,
