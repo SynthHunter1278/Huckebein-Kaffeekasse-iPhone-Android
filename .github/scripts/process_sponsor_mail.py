@@ -305,8 +305,11 @@ def is_email_from_this_month(msg, now):
     sender = parseaddr(msg.get("From", ""))[1].strip().casefold()
     if sender != ALLOWED_SENDER:
         return False
-    # Der IMAP-Suchfilter stellt sicher, dass nur Kassen- oder PayPal-Statusmails
-    # in diese Monatszählung gelangen; der Betreff kann beim PayPal-Template frei sein.
+    subject = decode_header_value(msg.get("Subject", ""))
+    body = message_text(msg)
+    combined = (subject + "\n" + body).upper()
+    if "KAFFEEKASSE" not in combined and "ZAHLUNG VOM TEILNEHMER" not in combined:
+        return False
     try:
         sent_at = parsedate_to_datetime(msg.get("Date", ""))
         if sent_at.tzinfo is None:
