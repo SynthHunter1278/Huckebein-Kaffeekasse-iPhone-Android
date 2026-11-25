@@ -242,7 +242,7 @@ class SponsorMailTests(unittest.TestCase):
                 ]
 
             def select(self, mailbox_name, readonly=False):
-                self.selected = mailbox_name
+                self.selected = mailbox_name.strip(chr(34))
                 return "OK", [b"1"]
 
             def uid(self, *args):
