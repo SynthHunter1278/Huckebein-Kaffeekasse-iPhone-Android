@@ -273,6 +273,15 @@ class SponsorMailTests(unittest.TestCase):
             self.assertEqual(code, expected_code)
             self.assertEqual(calculated_amount, euros)
 
+    def test_frontend_paypal_generator_and_validator_use_same_cent_basis(self):
+        html_path = Path(__file__).resolve().parents[2] / "index.html"
+        html = html_path.read_text(encoding="utf-8")
+        self.assertIn("const amountCents = Math.round(Number(request.amount) * 100);", html)
+        self.assertIn("const code = (amountCents * CODE_MULTIPLIER)", html)
+        self.assertIn("const rawAmountCents =", html)
+        self.assertIn("const amountCents = Math.round(rawAmountCents);", html)
+        self.assertNotIn("Math.round(rawAmount * 100)", html)
+
 
 if __name__ == "__main__":
     unittest.main()
