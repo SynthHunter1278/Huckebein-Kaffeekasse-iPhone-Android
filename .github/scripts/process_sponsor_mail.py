@@ -81,7 +81,7 @@ def field(text, names):
     for name in names:
         # First handle labelled lines. The value may be after the colon or on
         # the next non-empty line (the real Hans Huckebein notification format).
-        line_pattern = r"(?im)^\\s*" + re.escape(name) + r"\\s*[:=]\\s*([^\\r\\n]*)"
+        line_pattern = r"(?im)^\s*" + re.escape(name) + r"\s*[:=]\s*([^\r\n]*)"
         line_match = re.search(line_pattern, text)
         if line_match:
             value = line_match.group(1).strip()
@@ -94,8 +94,8 @@ def field(text, names):
 
         # EmailJS may also put several key/value pairs on one line.
         pattern = (
-            r"(?i)(?:^|[\\s|;])" + re.escape(name)
-            + r"\\s*[:=]\\s*(.*?)(?=(?:\\s*[|;]\\s*[A-Za-z_][A-Za-z0-9_-]*\\s*[:=])|[\\r\\n]|$)"
+            r"(?i)(?:^|[\s|;])" + re.escape(name)
+            + r"\s*[:=]\s*(.*?)(?=(?:\s*[|;]\s*[A-Za-z_][A-Za-z0-9_-]*\s*[:=])|[\r\n]|$)"
         )
         match = re.search(pattern, text)
         if match and match.group(1).strip():
