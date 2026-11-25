@@ -155,6 +155,7 @@ def parse_free_coffee_redemption(msg, uid):
         return None, "Teilnehmername fehlt"
 
     item = field(body, ["item", "Artikel", "Produkt", "Meldung / Buchung"])
+    item = re.split(r"\s*\|\s*(?:Aktions-ID|Buchungsnummer)\s*:", item, maxsplit=1, flags=re.I)[0].strip()
     action_match = re.search(r"Aktions-ID\s*:\s*([A-Za-z0-9_-]{3,100})", combined, re.I)
     if not action_match:
         return None, "Aktions-ID fehlt – keine zuordenbare Spendenaktion"
