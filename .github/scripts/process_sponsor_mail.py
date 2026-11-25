@@ -394,7 +394,7 @@ def find_hans_huckebein_mailbox(mail):
     populated = []
     counts = {}
     for mailbox_name in matches:
-        select_status, _ = mail.select(mailbox_name, readonly=True)
+        select_status, _ = mail.select(mailbox_name)
         if select_status != "OK":
             counts[mailbox_name] = "nicht lesbar"
             continue
