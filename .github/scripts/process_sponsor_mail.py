@@ -419,12 +419,12 @@ def main():
                 last_quota_update = last_quota_update.replace(tzinfo=TZ)
             last_quota_update = last_quota_update.astimezone(TZ)
         except (TypeError, ValueError):
-            quota_needs_refresh = True
+            quota_needs_refresh = monthly_email_count is not None
         # Heartbeat höchstens alle 12 Stunden, damit nicht alle fünf Minuten
         # ein unnötiger Git-Commit erzeugt wird. Änderungen am Zähler sofort.
         if monthly_email_count is not None and (last_quota_update is None or now - last_quota_update >= timedelta(hours=12)):
             quota_needs_refresh = True
-        if quota_needs_refresh:
+        if quota_needs_refresh and monthly_email_count is not None:
             config["emailKontingent"] = {
                 "monat": month_key,
                 "anzahl": monthly_email_count,
