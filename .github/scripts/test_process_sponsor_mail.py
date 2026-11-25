@@ -91,6 +91,23 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(entry["notification_id"], "BREAKFAST-123")
 
 
+
+    def test_actual_hans_huckebein_breakfast_email_format(self):
+        msg = make_mail(
+            "Neue Meldung aus der Hans Huckebein Kaffeekasse",
+            "Meldung / Buchung:\\nFreitagsfrühstück\\n\\n"
+            "Teilnehmer:\\nUwe Töbermann\\n\\n"
+            "Zeitpunkt:\\n25.11.2026, 06:15:21\\n\\n"
+            "Buchungs- bzw. Meldungsnummer:\\nMAIL-20261125051521-CR0RUN\\n\\n"
+            "Gesendet von:\\nHans Huckebein Kaffeekasse",
+        )
+        entry, reason = sponsor_mail.parse_breakfast_booking(msg, 991)
+        self.assertEqual(reason, "")
+        self.assertEqual(entry["name"], "Uwe Töbermann")
+        self.assertEqual(entry["item"], "Freitagsfrühstück")
+        self.assertEqual(entry["notification_id"], "MAIL-20261125051521-CR0RUN")
+        self.assertEqual(entry["created_at"], "2026-11-25T06:15:21+01:00")
+
     def test_unrelated_app_source_with_breakfast_keyword_is_not_a_booking(self):
         msg = make_mail(
             "KAFFEEKASSE – BUCHUNG",
@@ -288,11 +305,13 @@ class SponsorMailTests(unittest.TestCase):
                     return "OK", [b"10 11 25"]
                 if args[2] == sponsor_mail.IMAP_RELEVANT_SEARCHES[1]:
                     return "OK", [b"25 30"]
+                if args[2] == sponsor_mail.IMAP_RELEVANT_SEARCHES[2]:
+                    return "OK", [b"40 50"]
                 return "OK", [b"30 40"]
 
         fake = FakeMail()
         found = sponsor_mail.search_relevant_uids(fake, 10)
-        self.assertEqual(found, [11, 25, 30])
+        self.assertEqual(found, [11, 25, 30, 40, 50])
         self.assertEqual(fake.criteria, list(sponsor_mail.IMAP_RELEVANT_SEARCHES))
 
     def test_monthly_quota_skips_unreadable_header_and_preserves_existing_count(self):
