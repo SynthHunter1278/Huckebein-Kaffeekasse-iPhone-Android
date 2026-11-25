@@ -204,6 +204,66 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(entry["request_id"], "PP-1795632299184-GODZ3")
         self.assertEqual(entry["id"], "PP-1795632299184-GODZ3")
 
+    def test_find_hans_huckebein_mailbox_with_spaces_and_hyphen(self):
+        class FakeMail:
+            def list(self):
+                return "OK", [
+                    b'(\\HasNoChildren) "/" "INBOX"',
+                    b'(\\HasNoChildren) "/" "Hans Huckebein- Kaffeekasse"',
+                ]
+
+        self.assertEqual(sponsor_mail.find_hans_huckebein_mailbox(FakeMail()), "Hans Huckebein- Kaffeekasse")
+
+    def test_find_hans_huckebein_mailbox_rejects_ambiguous_matches(self):
+        class FakeMail:
+            def list(self):
+                return "OK", [
+                    b'(\\HasNoChildren) "/" "Hans Huckebein Kaffeekasse"',
+                    b'(\\HasNoChildren) "/" "Archiv/Hans Huckebein Kaffeekasse"',
+                ]
+
+            def select(self, mailbox_name, readonly=False):
+                return "OK", [b"1"]
+
+            def uid(self, *args):
+                return "OK", [b"12"]
+
+        with self.assertRaisesRegex(RuntimeError, "mehrere mögliche Kassenordner"):
+            sponsor_mail.find_hans_huckebein_mailbox(FakeMail())
+
+    def test_find_hans_huckebein_mailbox_uses_only_populated_candidate(self):
+        class FakeMail:
+            selected = ""
+
+            def list(self):
+                return "OK", [
+                    b'(\\HasNoChildren) "/" "Hans Huckebein Kaffeekasse"',
+                    b'(\\HasNoChildren) "/" "Inbox/Hans Huckebein Kaffeekasse"',
+                ]
+
+            def select(self, mailbox_name, readonly=False):
+                self.selected = mailbox_name.strip(chr(34))
+                return "OK", [b"1"]
+
+            def uid(self, *args):
+                if self.selected.startswith("Inbox/"):
+                    return "OK", [b""]
+                return "OK", [b"12"]
+
+        self.assertEqual(
+            sponsor_mail.find_hans_huckebein_mailbox(FakeMail()),
+            "Hans Huckebein Kaffeekasse",
+        )
+
+    def test_find_hans_huckebein_mailbox_fails_with_folder_list_for_diagnosis(self):
+        class FakeMail:
+            def list(self):
+                return "OK", [b'(\\HasNoChildren) "/" "INBOX"']
+
+        with self.assertRaisesRegex(RuntimeError, "Sichtbare Ordner: INBOX"):
+            sponsor_mail.find_hans_huckebein_mailbox(FakeMail())
+
+
     def test_uidvalidity_is_read_from_selected_mailbox(self):
         class FakeMail:
             def response(self, name):

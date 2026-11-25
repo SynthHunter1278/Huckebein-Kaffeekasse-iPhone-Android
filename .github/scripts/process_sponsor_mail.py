@@ -360,6 +360,60 @@ def is_signup_time_valid(request_time, now):
     )
 
 
+def find_hans_huckebein_mailbox(mail):
+    """Find the Yahoo IMAP folder containing Kaffeekasse notifications."""
+    status, folders = mail.list()
+    if status != "OK" or not folders:
+        raise RuntimeError("Yahoo-Ordnerliste konnte nicht abgerufen werden")
+
+    matches = []
+    visible_names = []
+    for raw in folders:
+        if not raw:
+            continue
+        line = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else str(raw)
+        end_quote = line.rfind(chr(34))
+        start_quote = line.rfind(chr(34), 0, end_quote)
+        if start_quote >= 0 and end_quote > start_quote:
+            mailbox_name = line[start_quote + 1:end_quote]
+            mailbox_name = mailbox_name.replace(chr(92) + chr(34), chr(34)).replace(chr(92) + chr(92), chr(92))
+        else:
+            mailbox_name = line.rsplit(" ", 1)[-1].strip(chr(34))
+        if not mailbox_name:
+            continue
+        visible_names.append(mailbox_name)
+        normalized = re.sub(r"[^a-z0-9]", "", mailbox_name.casefold())
+        if "hanshuckebein" in normalized and "kaffeekasse" in normalized:
+            matches.append(mailbox_name)
+
+    if len(matches) == 1:
+        return matches[0]
+    if not matches:
+        raise RuntimeError("Kein passender Yahoo-Kassenordner per IMAP gefunden. Sichtbare Ordner: " + (", ".join(visible_names) if visible_names else "(keine)"))
+
+    populated = []
+    counts = {}
+    for mailbox_name in matches:
+        select_status, _ = mail.select(chr(34) + mailbox_name + chr(34))
+        if select_status != "OK":
+            counts[mailbox_name] = "nicht lesbar"
+            continue
+        try:
+            count = len(search_all_relevant_uids(mail))
+        except Exception as exc:
+            counts[mailbox_name] = "Suchfehler: " + str(exc)
+            continue
+        counts[mailbox_name] = count
+        if count:
+            populated.append(mailbox_name)
+
+    if len(populated) == 1:
+        print(f"Yahoo-Kassenordner anhand der Nachrichten gefunden: {populated[0]}")
+        return populated[0]
+    details = "; ".join(f"{name}: {count}" for name, count in counts.items())
+    raise RuntimeError("Yahoo meldet mehrere mögliche Kassenordner; Nachrichtenanzahl je Ordner: " + details)
+
+
 def get_uidvalidity(mail):
     """Return the selected mailbox UIDVALIDITY, or None if Yahoo does not expose it."""
     try:
@@ -554,18 +608,26 @@ def main():
     mail = imaplib.IMAP4_SSL("imap.mail.yahoo.com", 993)
     try:
         mail.login(account, password)
-        select_status, _ = mail.select("INBOX")
+        mailbox_name = find_hans_huckebein_mailbox(mail)
+        previous_mailbox = str(state.get("mailbox", "INBOX")).strip()
+        select_status, _ = mail.select(chr(34) + mailbox_name + chr(34))
         if select_status != "OK":
-            raise RuntimeError("Yahoo-INBOX konnte nicht geöffnet werden")
+            raise RuntimeError(f"Yahoo-Kassenordner konnte nicht geöffnet werden: {mailbox_name}")
+        print(f"Yahoo-Kassenordner ausgewählt: {mailbox_name}")
         current_uidvalidity = get_uidvalidity(mail)
         previous_uidvalidity = str(state.get("uidvalidity", "")).strip()
+        mailbox_changed = previous_mailbox != mailbox_name
+        if mailbox_changed:
+            print(f"IMAP-Ordner gewechselt ({previous_mailbox} -> {mailbox_name}); Nachrichten werden einmalig erneut geprüft.")
+            state["last_uid"] = 0
+            state["mailbox"] = mailbox_name
         uidvalidity_state_changed = bool(current_uidvalidity and current_uidvalidity != previous_uidvalidity)
         uidvalidity_changed = bool(
             current_uidvalidity and previous_uidvalidity
             and current_uidvalidity != previous_uidvalidity
         )
         uid_namespace_unverified = bool(current_uidvalidity and not previous_uidvalidity)
-        uidvalidity_replay_required = uidvalidity_changed or uid_namespace_unverified
+        uidvalidity_replay_required = mailbox_changed or uidvalidity_changed or uid_namespace_unverified
         if current_uidvalidity:
             if uidvalidity_changed:
                 print(
@@ -591,7 +653,7 @@ def main():
         else:
             print(f"{len(uids)} passende Kaffeekassen-Nachrichten seit dem letzten Lauf gefunden.")
         processed = set(state.get("processed_ids", []))
-        changed = uidvalidity_state_changed
+        changed = uidvalidity_state_changed or mailbox_changed
         sponsor_activated = False
 
         # Monatlicher Zähler: vollständiger Abgleich mit den zugestellten

@@ -1,5 +1,5 @@
 {
-  "last_uid": 724646,
+  "last_uid": 42,
   "processed_ids": [
     "SPENDER-20261117172516-B18U14",
     "SPENDER-20261120100146-SXZT5M",
@@ -8,5 +8,6 @@
   ],
   "breakfast_cleanup_date": "2026-11-20",
   "pending_requests": [],
-  "uidvalidity": "1"
+  "uidvalidity": "1794504278",
+  "mailbox": "Hans Huckebein &IBM- Kaffeekasse"
 }
