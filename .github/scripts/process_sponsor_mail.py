@@ -173,10 +173,19 @@ def parse_free_coffee_redemption(msg, uid):
 def parse_paypal_decision(msg, uid):
     """Parse the participant's explicit PayPal payment decision email."""
     body = message_text(msg)
+    subject = decode_header_value(msg.get("Subject", ""))
     user_value = field(body, ["user", "Name", "Teilnehmer", "App-Name"])
-    normalized = user_value.upper().replace("Ä", "AE").replace("Ö", "OE").replace("Ü", "UE")
-    if "ZAHLUNG VOM TEILNEHMER" not in normalized:
+    subject_participant = re.sub(
+        r"(?i)^PayPal-Aufladung eingegangen\s*[–-]\s*", "", subject
+    ).strip()
+    status_source = (user_value + "\n" + subject).upper()
+    status_source = status_source.replace("Ä", "AE").replace("Ö", "OE").replace("Ü", "UE")
+    if "ZAHLUNG VOM TEILNEHMER" not in status_source:
         return None, "Keine PayPal-Statusmeldung"
+    # Some EmailJS/Yahoo variants expose the decision marker in the subject,
+    # while the body field is incomplete. Use the subject's participant text then.
+    if "ZAHLUNG VOM TEILNEHMER" not in user_value.upper():
+        user_value = subject_participant
 
     if "ALS NICHT BEZAHLT BESTAETIGT" in normalized:
         payment_status = "NICHT BEZAHLT"
@@ -742,7 +751,7 @@ def main():
             if request and finalize_birthday_settlement(config, free_coffee_log, now):
                 changed = True
             if not request:
-                print(f"UID {uid}: ignoriert ({reason})")
+                print(f"UID {uid}: ignoriert ({reason}; PayPal-Prüfung: {paypal_reason})")
                 continue
             if request["request_id"] in processed or any(
                 str(item.get("request_id")) == request["request_id"]
