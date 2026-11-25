@@ -239,6 +239,40 @@ class SponsorMailTests(unittest.TestCase):
             ("search", None, sponsor_mail.IMAP_RELEVANT_SEARCH),
         )
 
+    def test_monthly_quota_skips_unreadable_header_and_preserves_existing_count(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        class FakeMail:
+            def uid(self, *args):
+                if args[0] == "search":
+                    return "OK", [b"10 11 12"]
+                if args[1] == "11":
+                    return "NO", [b"header unavailable"]
+                msg = make_mail("KAFFEEKASSE - TEST", "test")
+                msg.replace_header("Date", "Tue, 24 Nov 2026 11:00:00 +0100")
+                msg.replace_header("To", "Kassenverwaltung <toeber2000@yahoo.de>")
+                return "OK", [(b"BODY[HEADER]", msg.as_bytes())]
+
+        now = datetime(2026, 11, 24, 12, 0, tzinfo=ZoneInfo("Europe/Berlin"))
+        self.assertIsNone(
+            sponsor_mail.count_monthly_email_notifications(FakeMail(), now, "toeber2000@yahoo.de")
+        )
+
+    def test_paypal_code_generation_matches_actual_cent_validator(self):
+        multiplier = 1307
+        day_multiplier = 713
+        offset = 418952
+        day = 25
+        for euros in (5, 10, 15):
+            code = round(euros * 100) * multiplier + day * day_multiplier + offset
+            raw_amount_cents = (code - offset - day * day_multiplier) / multiplier
+            amount_cents = round(raw_amount_cents)
+            calculated_amount = amount_cents / 100
+            expected_code = amount_cents * multiplier + day * day_multiplier + offset
+            self.assertEqual(code, expected_code)
+            self.assertEqual(calculated_amount, euros)
+
 
 if __name__ == "__main__":
     unittest.main()
