@@ -227,6 +227,22 @@ def parse_paypal_decision(msg, uid):
     }, ""
 
 
+def is_duplicate_paypal_entry(entry, existing_entries):
+    """Deduplicate PayPal notifications by their stable request ID, falling back to UID."""
+    request_id = str(entry.get("request_id", "")).strip()
+    return any(
+        (
+            request_id
+            and str(item.get("request_id", "")).strip() == request_id
+        )
+        or (
+            not request_id
+            and str(item.get("id", "")) == str(entry.get("id", ""))
+        )
+        for item in existing_entries if isinstance(item, dict)
+    )
+
+
 def parse_confirmation(msg, uid):
     """Recognize the app's explicit settlement-confirmation email."""
     subject = decode_header_value(msg.get("Subject", ""))
@@ -630,18 +646,7 @@ def main():
             paypal_entry, paypal_reason = parse_paypal_decision(msg, uid)
             if paypal_entry:
                 stable_request_id = str(paypal_entry.get("request_id", "")).strip()
-                is_duplicate = any(
-                    (
-                        stable_request_id
-                        and str(item.get("request_id", "")).strip() == stable_request_id
-                    )
-                    or (
-                        not stable_request_id
-                        and str(item.get("id", "")) == paypal_entry["id"]
-                    )
-                    for item in paypal_log["entries"] if isinstance(item, dict)
-                )
-                if not is_duplicate:
+                if not is_duplicate_paypal_entry(paypal_entry, paypal_log["entries"]):
                     paypal_log["entries"].append(paypal_entry)
                     paypal_log["entries"] = paypal_log["entries"][-1000:]
                     print(f"PayPal-Protokoll: {paypal_entry['name']} – {paypal_entry['amount']:.2f} EUR – {paypal_entry['status']}")
