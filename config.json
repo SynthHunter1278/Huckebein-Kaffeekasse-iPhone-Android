@@ -1,19 +1,17 @@
 {
   "geburtstag": {
-    "aktiv": true,
+    "aktiv": false,
     "spender": "Uwe Töbermann",
     "datum": "2026-11-25",
     "abrechnung": {
-      "id": "KAFFEE-20261117-1794940496054",
-      "spender": "Uwe",
-      "datum": "2026-11-17",
+      "id": "KAFFEE-20261125-1795626397014",
+      "spender": "Uwe Töbermann",
+      "datum": "2026-11-25",
       "anzahl": 12,
       "einzelpreis": 0.5,
       "gesamt": 6,
-      "status": "bestätigt",
-      "erstellt": "2026-11-17T18:34:56.054Z",
-      "bestaetigtVon": "Admin – Zahlung und lokale Abbuchung bestätigt",
-      "bestaetigungQuelle": "Manuell im Repository bestätigt"
+      "status": "offen",
+      "erstellt": "2026-11-25T17:06:37.015Z"
     },
     "aktionsId": "KAFFEE-20261125-060838-6-M2SPS8",
     "sperreBis": "2026-11-26T06:00:00+01:00",
