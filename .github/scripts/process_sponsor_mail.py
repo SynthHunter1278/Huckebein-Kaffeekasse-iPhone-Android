@@ -540,7 +540,7 @@ def main():
             state["uidvalidity"] = current_uidvalidity
         else:
             print("WARNUNG: UIDVALIDITY fehlt; gespeicherter UID-Stand wird vorsichtshalber beibehalten.")
-        diagnostic = True  # Temporary read-only parser diagnostics
+        diagnostic = False  # Live processing enabled after redacted diagnostics
         uids = search_relevant_uids(mail, 0 if diagnostic or uidvalidity_replay_required else state.get("last_uid", 0))
         if diagnostic:
             uids = uids[-30:]
