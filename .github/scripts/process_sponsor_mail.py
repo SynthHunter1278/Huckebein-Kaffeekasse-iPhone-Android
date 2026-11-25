@@ -190,6 +190,12 @@ def parse_paypal_decision(msg, uid):
     amount_raw = field(body, ["amount", "Betrag"])
     amount_match = re.search(r"(\d+(?:[.,]\d{1,2})?)", amount_raw)
     if not amount_match:
+        # Robust fallback for EmailJS templates where "Betrag:" is embedded in an inline row.
+        amount_match = re.search(
+            r"(?i)\b(?:amount|betrag)\s*[:=]\s*(\d+(?:[.,]\d{1,2})?)",
+            body,
+        )
+    if not amount_match:
         return None, "PayPal-Betrag fehlt"
     try:
         amount = round(float(amount_match.group(1).replace(",", ".")), 2)
