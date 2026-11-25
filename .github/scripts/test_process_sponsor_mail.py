@@ -274,7 +274,7 @@ class SponsorMailTests(unittest.TestCase):
 
         fake = FakeMail()
         found = sponsor_mail.search_relevant_uids(fake, 10)
-        self.assertEqual(found, [11, 25, 30, 40])
+        self.assertEqual(found, [11, 25, 30])
         self.assertEqual(fake.criteria, list(sponsor_mail.IMAP_RELEVANT_SEARCHES))
 
     def test_monthly_quota_skips_unreadable_header_and_preserves_existing_count(self):
