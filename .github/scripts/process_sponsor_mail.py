@@ -361,7 +361,7 @@ def is_signup_time_valid(request_time, now):
 
 
 def find_hans_huckebein_mailbox(mail):
-    """Find the Yahoo IMAP folder used for Hans Huckebein Kaffeekasse messages."""
+    """Find the Yahoo IMAP folder containing Kaffeekasse notifications."""
     status, folders = mail.list()
     if status != "OK" or not folders:
         raise RuntimeError("Yahoo-Ordnerliste konnte nicht abgerufen werden")
@@ -388,9 +388,31 @@ def find_hans_huckebein_mailbox(mail):
 
     if len(matches) == 1:
         return matches[0]
-    if len(matches) > 1:
-        raise RuntimeError("Mehrere passende Yahoo-Ordner gefunden; eindeutige Auswahl nötig: " + ", ".join(matches))
-    raise RuntimeError("Kein passender Yahoo-Kassenordner per IMAP gefunden. Sichtbare Ordner: " + (", ".join(visible_names) if visible_names else "(keine)"))
+    if not matches:
+        raise RuntimeError("Kein passender Yahoo-Kassenordner per IMAP gefunden. Sichtbare Ordner: " + (", ".join(visible_names) if visible_names else "(keine)"))
+
+    populated = []
+    counts = {}
+    for mailbox_name in matches:
+        select_status, _ = mail.select(mailbox_name, readonly=True)
+        if select_status != "OK":
+            counts[mailbox_name] = "nicht lesbar"
+            continue
+        try:
+            count = len(search_all_relevant_uids(mail))
+        except Exception as exc:
+            counts[mailbox_name] = "Suchfehler: " + str(exc)
+            continue
+        counts[mailbox_name] = count
+        if count:
+            populated.append(mailbox_name)
+
+    if len(populated) == 1:
+        print(f"Yahoo-Kassenordner anhand der Nachrichten gefunden: {populated[0]}")
+        return populated[0]
+    details = "; ".join(f"{name}: {count}" for name, count in counts.items())
+    raise RuntimeError("Yahoo meldet mehrere mögliche Kassenordner; Nachrichtenanzahl je Ordner: " + details)
+
 
 def get_uidvalidity(mail):
     """Return the selected mailbox UIDVALIDITY, or None if Yahoo does not expose it."""
