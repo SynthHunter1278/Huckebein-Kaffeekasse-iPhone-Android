@@ -91,6 +91,23 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(entry["notification_id"], "BREAKFAST-123")
 
 
+
+    def test_actual_hans_huckebein_breakfast_email_format(self):
+        msg = make_mail(
+            "Neue Meldung aus der Hans Huckebein Kaffeekasse",
+            "Meldung / Buchung:\nFreitagsfrühstück\n\n"
+            "Teilnehmer:\nUwe Töbermann\n\n"
+            "Zeitpunkt:\n25.11.2026, 06:15:21\n\n"
+            "Buchungs- bzw. Meldungsnummer:\nMAIL-20261125051521-CR0RUN\n\n"
+            "Gesendet von:\nHans Huckebein Kaffeekasse",
+        )
+        entry, reason = sponsor_mail.parse_breakfast_booking(msg, 991)
+        self.assertEqual(reason, "")
+        self.assertEqual(entry["name"], "Uwe Töbermann")
+        self.assertEqual(entry["item"], "Freitagsfrühstück")
+        self.assertEqual(entry["notification_id"], "MAIL-20261125051521-CR0RUN")
+        self.assertEqual(entry["created_at"], "2026-11-25T06:15:21+01:00")
+
     def test_unrelated_app_source_with_breakfast_keyword_is_not_a_booking(self):
         msg = make_mail(
             "KAFFEEKASSE – BUCHUNG",
@@ -126,6 +143,24 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(entry["name"], "Testperson")
         self.assertEqual(entry["notification_id"], "FREE-123")
 
+
+    def test_actual_hans_huckebein_free_coffee_email_format(self):
+        msg = make_mail(
+            "Neue Meldung aus der Hans Huckebein Kaffeekasse",
+            "Meldung / Buchung:\n"
+            "KAFFEEAKTION GRATISENTNAHME | 1 Automatenkaffee | Aktions-ID: KAFFEE-20261125-060838-6-M2SPS8 | Buchungsnummer: GEB-KAFFEE-20261125055450-RHVT3B\n\n"
+            "Teilnehmer:\nUwe Töbermann\n\n"
+            "Zeitpunkt:\n25.11.2026, 06:54:51\n\n"
+            "Buchungs- bzw. Meldungsnummer:\nGEB-KAFFEE-20261125055450-RHVT3B\n\n"
+            "Gesendet von:\nHans Huckebein Kaffeekasse",
+        )
+        entry, reason = sponsor_mail.parse_free_coffee_redemption(msg, 990)
+        self.assertEqual(reason, "")
+        self.assertEqual(entry["name"], "Uwe Töbermann")
+        self.assertEqual(entry["action_id"], "KAFFEE-20261125-060838-6-M2SPS8")
+        self.assertEqual(entry["notification_id"], "GEB-KAFFEE-20261125055450-RHVT3B")
+        self.assertEqual(entry["created_at"], "2026-11-25T06:54:51+01:00")
+
     def test_free_coffee_without_campaign_id_is_not_counted(self):
         msg = make_mail(
             "KAFFEEKASSE – KAFFEEAKTION – GRATISENTNAHME",
@@ -152,6 +187,43 @@ class SponsorMailTests(unittest.TestCase):
         self.assertEqual(entry["name"], "Testperson")
         self.assertEqual(entry["amount"], 10.0)
         self.assertEqual(entry["status"], "BEZAHLT")
+
+
+    def test_paypal_emailjs_inline_message_from_real_example(self):
+        msg = make_mail(
+            "PayPal-Aufladung eingegangen – KAFFEEKASSE – Uwe Töbermann – ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT",
+            "Teilnehmer: KAFFEEKASSE – Uwe Töbermann – ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT\n"
+            "Betrag: 10,00 € | user: KAFFEEKASSE – Uwe Töbermann – ZAHLUNG VOM TEILNEHMER ALS BEZAHLT BESTÄTIGT "
+            "| timestamp: 25.11.2026, 19:45:07 | request_id: PP-1795632299184-GODZ3 EUR",
+        )
+        entry, reason = sponsor_mail.parse_paypal_decision(msg, 724552)
+        self.assertEqual(reason, "")
+        self.assertEqual(entry["name"], "Uwe Töbermann")
+        self.assertEqual(entry["amount"], 10.0)
+        self.assertEqual(entry["status"], "BEZAHLT")
+        self.assertEqual(entry["request_id"], "PP-1795632299184-GODZ3")
+        self.assertEqual(entry["id"], "PP-1795632299184-GODZ3")
+
+    def test_uidvalidity_is_read_from_selected_mailbox(self):
+        class FakeMail:
+            def response(self, name):
+                self.asserted_name = name
+                return "UIDVALIDITY", [b"724552"]
+
+        fake = FakeMail()
+        self.assertEqual(sponsor_mail.get_uidvalidity(fake), "724552")
+        self.assertEqual(fake.asserted_name, "UIDVALIDITY")
+
+    def test_paypal_log_deduplication_uses_request_id(self):
+        existing = {"id": "old-uid", "request_id": "PP-1795632299184-GODZ3"}
+        duplicate = {"id": "new-uid", "request_id": "PP-1795632299184-GODZ3"}
+        different = {"id": "new-uid", "request_id": "PP-OTHER-123456"}
+        self.assertTrue(sponsor_mail.is_duplicate_paypal_entry(duplicate, [existing]))
+        self.assertFalse(sponsor_mail.is_duplicate_paypal_entry(different, [existing]))
+        self.assertTrue(sponsor_mail.is_duplicate_paypal_entry(
+            {"id": "same-uid", "request_id": ""},
+            [{"id": "same-uid", "request_id": ""}],
+        ))
 
     def test_paypal_not_paid_decision(self):
         msg = make_mail(
@@ -225,19 +297,22 @@ class SponsorMailTests(unittest.TestCase):
     def test_search_is_limited_to_coffee_kasse_messages(self):
         class FakeMail:
             def __init__(self):
-                self.args = None
+                self.criteria = []
 
             def uid(self, *args):
-                self.args = args
-                return "OK", [b"10 11 25"]
+                self.criteria.append(args[2])
+                if args[2] == sponsor_mail.IMAP_RELEVANT_SEARCHES[0]:
+                    return "OK", [b"10 11 25"]
+                if args[2] == sponsor_mail.IMAP_RELEVANT_SEARCHES[1]:
+                    return "OK", [b"25 30"]
+                if args[2] == sponsor_mail.IMAP_RELEVANT_SEARCHES[2]:
+                    return "OK", [b"40 50"]
+                return "OK", [b"30 40"]
 
         fake = FakeMail()
         found = sponsor_mail.search_relevant_uids(fake, 10)
-        self.assertEqual(found, [11, 25])
-        self.assertEqual(
-            fake.args,
-            ("search", None, sponsor_mail.IMAP_RELEVANT_SEARCH),
-        )
+        self.assertEqual(found, [11, 25, 30, 40, 50])
+        self.assertEqual(fake.criteria, list(sponsor_mail.IMAP_RELEVANT_SEARCHES))
 
     def test_monthly_quota_skips_unreadable_header_and_preserves_existing_count(self):
         from datetime import datetime

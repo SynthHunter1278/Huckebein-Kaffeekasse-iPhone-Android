@@ -18,7 +18,11 @@ STATE = ROOT / ".github" / "state" / "sponsor-mail-state.json"
 TZ = ZoneInfo("Europe/Berlin")
 START = time(6, 0)
 END = time(15, 0)
-IMAP_RELEVANT_SEARCH = 'OR SUBJECT "KAFFEEKASSE" OR TEXT "KAFFEEKASSE" TEXT "ZAHLUNG VOM TEILNEHMER"'
+IMAP_RELEVANT_SEARCHES = (
+    'OR SUBJECT "KAFFEEKASSE" OR TEXT "KAFFEEKASSE" TEXT "ZAHLUNG VOM TEILNEHMER"',
+    'SUBJECT "PayPal"',
+    'TEXT "Hans Huckebein Kaffeekasse"',
+)
 
 def load_json(path, default):
     if not path.exists():
@@ -73,14 +77,28 @@ def is_message_for_account(msg, account):
     return expected in recipients
 
 def field(text, names):
-    """Read key/value fields whether EmailJS renders them on separate lines or inline."""
+    """Read key/value fields whether EmailJS renders them inline or on the next line."""
     for name in names:
+        # First handle labelled lines. The value may be after the colon or on
+        # the next non-empty line (the real Hans Huckebein notification format).
+        line_pattern = r"(?im)^\s*" + re.escape(name) + r"\s*[:=]\s*([^\r\n]*)"
+        line_match = re.search(line_pattern, text)
+        if line_match:
+            value = line_match.group(1).strip()
+            if value:
+                return value
+            following_lines = text[line_match.end():].splitlines()
+            for line in following_lines:
+                if line.strip():
+                    return line.strip()
+
+        # EmailJS may also put several key/value pairs on one line.
         pattern = (
             r"(?i)(?:^|[\s|;])" + re.escape(name)
             + r"\s*[:=]\s*(.*?)(?=(?:\s*[|;]\s*[A-Za-z_][A-Za-z0-9_-]*\s*[:=])|[\r\n]|$)"
         )
         match = re.search(pattern, text)
-        if match:
+        if match and match.group(1).strip():
             return match.group(1).strip()
     return ""
 
@@ -88,7 +106,7 @@ def parse_breakfast_booking(msg, uid):
     """Parse confirmed Friday-breakfast bookings sent by the participant app."""
     body = message_text(msg)
     subject = decode_header_value(msg.get("Subject", ""))
-    item = field(body, ["item", "Artikel", "Produkt"])
+    item = field(body, ["item", "Artikel", "Produkt", "Meldung / Buchung"])
     normalized = (subject + "\n" + item).upper().replace("Ü", "UE")
     if "FRUEHSTUECKSBUCHUNG" not in normalized and "FREITAGSFRUEHSTUECK" not in normalized:
         return None, "Keine Frühstücksbuchung"
@@ -98,7 +116,7 @@ def parse_breakfast_booking(msg, uid):
     if not name or name.lower() in ("anonymer teilnehmer", "unbekannter teilnehmer"):
         return None, "Teilnehmername fehlt"
 
-    stamp = field(body, ["timestamp", "Zeitstempel", "Datum"])
+    stamp = field(body, ["timestamp", "Zeitstempel", "Datum", "Zeitpunkt"])
     booking_time = None
     if stamp:
         for fmt in ("%d.%m.%Y, %H:%M:%S", "%d.%m.%Y, %H:%M", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M"):
@@ -113,7 +131,7 @@ def parse_breakfast_booking(msg, uid):
         except Exception:
             booking_time = datetime.now(TZ)
 
-    notification_id = field(body, ["notification_id", "Anmelde-ID", "Buchungsnummer"])
+    notification_id = field(body, ["notification_id", "Anmelde-ID", "Buchungsnummer", "Buchungs- bzw. Meldungsnummer"])
     return {
         "id": str(uid),
         "notification_id": notification_id,
@@ -136,13 +154,14 @@ def parse_free_coffee_redemption(msg, uid):
     if not name or name.lower() in ("anonymer teilnehmer", "unbekannter teilnehmer"):
         return None, "Teilnehmername fehlt"
 
-    item = field(body, ["item", "Artikel", "Produkt"])
+    item = field(body, ["item", "Artikel", "Produkt", "Meldung / Buchung"])
+    item = re.split(r"\s*\|\s*(?:Aktions-ID|Buchungsnummer)\s*:", item, maxsplit=1, flags=re.I)[0].strip()
     action_match = re.search(r"Aktions-ID\s*:\s*([A-Za-z0-9_-]{3,100})", combined, re.I)
     if not action_match:
         return None, "Aktions-ID fehlt – keine zuordenbare Spendenaktion"
     action_id = action_match.group(1)
-    booking_id = field(body, ["notification_id", "Buchungsnummer", "Anmelde-ID"])
-    stamp = field(body, ["timestamp", "Zeitstempel", "Datum"])
+    booking_id = field(body, ["notification_id", "Buchungsnummer", "Anmelde-ID", "Buchungs- bzw. Meldungsnummer"])
+    stamp = field(body, ["timestamp", "Zeitstempel", "Datum", "Zeitpunkt"])
     redeemed_at = None
     if stamp:
         for fmt in ("%d.%m.%Y, %H:%M:%S", "%d.%m.%Y, %H:%M", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M"):
@@ -170,11 +189,21 @@ def parse_free_coffee_redemption(msg, uid):
 def parse_paypal_decision(msg, uid):
     """Parse the participant's explicit PayPal payment decision email."""
     body = message_text(msg)
+    subject = decode_header_value(msg.get("Subject", ""))
     user_value = field(body, ["user", "Name", "Teilnehmer", "App-Name"])
-    normalized = user_value.upper().replace("Ä", "AE").replace("Ö", "OE").replace("Ü", "UE")
-    if "ZAHLUNG VOM TEILNEHMER" not in normalized:
+    subject_participant = re.sub(
+        r"(?i)^PayPal-Aufladung eingegangen\s*[–-]\s*", "", subject
+    ).strip()
+    status_source = (user_value + "\n" + subject).upper()
+    status_source = status_source.replace("Ä", "AE").replace("Ö", "OE").replace("Ü", "UE")
+    if "ZAHLUNG VOM TEILNEHMER" not in status_source:
         return None, "Keine PayPal-Statusmeldung"
+    # Some EmailJS/Yahoo variants expose the decision marker in the subject,
+    # while the body field is incomplete. Use the subject's participant text then.
+    if "ZAHLUNG VOM TEILNEHMER" not in user_value.upper():
+        user_value = subject_participant
 
+    normalized = status_source
     if "ALS NICHT BEZAHLT BESTAETIGT" in normalized:
         payment_status = "NICHT BEZAHLT"
     elif "ALS BEZAHLT BESTAETIGT" in normalized:
@@ -189,6 +218,12 @@ def parse_paypal_decision(msg, uid):
     name = re.sub(r"^KAFFEEKASSE\s*[–-]\s*", "", name, flags=re.I).strip()
     amount_raw = field(body, ["amount", "Betrag"])
     amount_match = re.search(r"(\d+(?:[.,]\d{1,2})?)", amount_raw)
+    if not amount_match:
+        # Robust fallback for EmailJS templates where "Betrag:" is embedded in an inline row.
+        amount_match = re.search(
+            r"(?i)\b(?:amount|betrag)\s*[:=]\s*(\d+(?:[.,]\d{1,2})?)",
+            body,
+        )
     if not amount_match:
         return None, "PayPal-Betrag fehlt"
     try:
@@ -213,14 +248,34 @@ def parse_paypal_decision(msg, uid):
         except Exception:
             decision_time = datetime.now(TZ)
 
+    request_id_raw = field(body, ["request_id", "Anfrage-ID"])
+    request_match = re.search(r"\b(PP-[A-Za-z0-9_-]{6,100})\b", request_id_raw)
+    request_id = request_match.group(1) if request_match else request_id_raw.strip()
+
     return {
-        "id": str(uid),
-        "request_id": field(body, ["request_id", "Anfrage-ID"]),
+        "id": request_id or str(uid),
+        "request_id": request_id,
         "name": name or "Unbekannter Teilnehmer",
         "amount": amount,
         "status": payment_status,
         "created_at": decision_time.isoformat()
     }, ""
+
+
+def is_duplicate_paypal_entry(entry, existing_entries):
+    """Deduplicate PayPal notifications by their stable request ID, falling back to UID."""
+    request_id = str(entry.get("request_id", "")).strip()
+    return any(
+        (
+            request_id
+            and str(item.get("request_id", "")).strip() == request_id
+        )
+        or (
+            not request_id
+            and str(item.get("id", "")) == str(entry.get("id", ""))
+        )
+        for item in existing_entries if isinstance(item, dict)
+    )
 
 
 def parse_confirmation(msg, uid):
@@ -305,14 +360,42 @@ def is_signup_time_valid(request_time, now):
     )
 
 
+def get_uidvalidity(mail):
+    """Return the selected mailbox UIDVALIDITY, or None if Yahoo does not expose it."""
+    try:
+        response_type, response_data = mail.response("UIDVALIDITY")
+        if response_type and str(response_type).upper() == "UIDVALIDITY" and response_data:
+            match = re.search(rb"(\d+)", b" ".join(
+                value if isinstance(value, bytes) else str(value).encode()
+                for value in response_data
+            ))
+            if match:
+                return match.group(1).decode("ascii")
+    except Exception as exc:
+        print(f"WARNUNG: Yahoo UIDVALIDITY konnte nicht gelesen werden: {exc}")
+    return None
+
+
+def search_all_relevant_uids(mail):
+    """Union Kaffeekassen and PayPal search results; parser checks every candidate."""
+    found = set()
+    for criteria in IMAP_RELEVANT_SEARCHES:
+        status, data = mail.uid("search", None, criteria)
+        if status != "OK":
+            raise RuntimeError("Yahoo-Postfach konnte nicht nach Kaffeekassen-Nachrichten durchsucht werden")
+        if data and data[0]:
+            found.update(
+                int(value) for value in data[0].split()
+                if value.isdigit()
+            )
+    return sorted(found)
+
+
 def search_relevant_uids(mail, last_uid):
-    """Search only coffee-kasse notifications instead of downloading the whole inbox."""
-    status, data = mail.uid("search", None, IMAP_RELEVANT_SEARCH)
-    if status != "OK":
-        raise RuntimeError("Yahoo-Postfach konnte nicht nach Kaffeekassen-Nachrichten durchsucht werden")
+    """Search only relevant notifications instead of downloading the whole inbox."""
     return [
-        int(value) for value in data[0].split()
-        if value.isdigit() and int(value) > int(last_uid)
+        uid for uid in search_all_relevant_uids(mail)
+        if uid > int(last_uid)
     ]
 
 def is_email_from_this_month(msg, now, account):
@@ -336,13 +419,15 @@ def is_email_from_this_month(msg, now, account):
 
 def count_monthly_email_notifications(mail, now, account):
     """Count readable monthly notifications; one broken header must not stop booking processing."""
-    status, data = mail.uid("search", None, IMAP_RELEVANT_SEARCH)
-    if status != "OK":
-        print("WARNUNG: Yahoo-Suche für den E-Mail-Zähler fehlgeschlagen; Buchungsverarbeitung läuft weiter.")
+    try:
+        uids = search_all_relevant_uids(mail)
+    except Exception as exc:
+        print(f"WARNUNG: Yahoo-Suche für den E-Mail-Zähler fehlgeschlagen ({exc}); Buchungsverarbeitung läuft weiter.")
         return None
     total = 0
     unreadable = 0
-    for raw_uid in data[0].split():
+    for raw_uid in uids:
+        raw_uid = str(raw_uid).encode("ascii")
         if not raw_uid.isdigit():
             continue
         uid_text = raw_uid.decode("ascii")
@@ -469,16 +554,44 @@ def main():
     mail = imaplib.IMAP4_SSL("imap.mail.yahoo.com", 993)
     try:
         mail.login(account, password)
-        mail.select("INBOX")
+        select_status, _ = mail.select("INBOX")
+        if select_status != "OK":
+            raise RuntimeError("Yahoo-INBOX konnte nicht geöffnet werden")
+        current_uidvalidity = get_uidvalidity(mail)
+        previous_uidvalidity = str(state.get("uidvalidity", "")).strip()
+        uidvalidity_state_changed = bool(current_uidvalidity and current_uidvalidity != previous_uidvalidity)
+        uidvalidity_changed = bool(
+            current_uidvalidity and previous_uidvalidity
+            and current_uidvalidity != previous_uidvalidity
+        )
+        uid_namespace_unverified = bool(current_uidvalidity and not previous_uidvalidity)
+        uidvalidity_replay_required = uidvalidity_changed or uid_namespace_unverified
+        if current_uidvalidity:
+            if uidvalidity_changed:
+                print(
+                    "Yahoo UIDVALIDITY hat sich geändert "
+                    f"({previous_uidvalidity} -> {current_uidvalidity}); "
+                    "Nachrichten werden erneut geprüft, stabile IDs verhindern Duplikate."
+                )
+                state["last_uid"] = 0
+            elif uid_namespace_unverified:
+                print(
+                    f"Yahoo UIDVALIDITY erstmals erfasst: {current_uidvalidity}; "
+                    "alter UID-Stand ist nicht zuordenbar, Nachrichten werden einmalig erneut geprüft."
+                )
+                state["last_uid"] = 0
+            state["uidvalidity"] = current_uidvalidity
+        else:
+            print("WARNUNG: UIDVALIDITY fehlt; gespeicherter UID-Stand wird vorsichtshalber beibehalten.")
         diagnostic = False  # Live processing enabled after redacted diagnostics
-        uids = search_relevant_uids(mail, 0 if diagnostic else state.get("last_uid", 0))
+        uids = search_relevant_uids(mail, 0 if diagnostic or uidvalidity_replay_required else state.get("last_uid", 0))
         if diagnostic:
             uids = uids[-30:]
             print(f"Diagnosemodus: {len(uids)} neueste passende Nachrichten werden nur anhand ihrer Kopfzeilen geprüft; es wird nichts verändert.")
         else:
             print(f"{len(uids)} passende Kaffeekassen-Nachrichten seit dem letzten Lauf gefunden.")
         processed = set(state.get("processed_ids", []))
-        changed = False
+        changed = uidvalidity_state_changed
         sponsor_activated = False
 
         # Monatlicher Zähler: vollständiger Abgleich mit den zugestellten
@@ -588,18 +701,35 @@ def main():
 
             paypal_entry, paypal_reason = parse_paypal_decision(msg, uid)
             if paypal_entry:
-                if not any(str(item.get("id")) == paypal_entry["id"] for item in paypal_log["entries"] if isinstance(item, dict)):
+                stable_request_id = str(paypal_entry.get("request_id", "")).strip()
+                if not is_duplicate_paypal_entry(paypal_entry, paypal_log["entries"]):
                     paypal_log["entries"].append(paypal_entry)
                     paypal_log["entries"] = paypal_log["entries"][-1000:]
                     print(f"PayPal-Protokoll: {paypal_entry['name']} – {paypal_entry['amount']:.2f} EUR – {paypal_entry['status']}")
+                else:
+                    print(f"UID {uid}: PayPal-Aufladung {stable_request_id or paypal_entry['id']} bereits protokolliert")
                 continue
 
             breakfast_entry, breakfast_reason = parse_breakfast_booking(msg, uid)
             if breakfast_entry:
-                if not any(str(item.get("id")) == breakfast_entry["id"] for item in breakfast_log["entries"] if isinstance(item, dict)):
+                stable_booking_id = str(breakfast_entry.get("notification_id", "")).strip()
+                is_duplicate = any(
+                    (
+                        stable_booking_id
+                        and str(item.get("notification_id", "")).strip() == stable_booking_id
+                    )
+                    or (
+                        not stable_booking_id
+                        and str(item.get("id", "")) == breakfast_entry["id"]
+                    )
+                    for item in breakfast_log["entries"] if isinstance(item, dict)
+                )
+                if not is_duplicate:
                     breakfast_log["entries"].append(breakfast_entry)
                     breakfast_log["entries"] = breakfast_log["entries"][-1000:]
                     print(f"Frühstücksprotokoll: {breakfast_entry['name']} – {breakfast_entry['created_at']}")
+                else:
+                    print(f"UID {uid}: Frühstücksbuchung {stable_booking_id or breakfast_entry['id']} bereits protokolliert")
                 continue
 
             confirmation, confirmation_reason = parse_confirmation(msg, uid)
@@ -638,7 +768,7 @@ def main():
             if request and finalize_birthday_settlement(config, free_coffee_log, now):
                 changed = True
             if not request:
-                print(f"UID {uid}: ignoriert ({reason})")
+                print(f"UID {uid}: ignoriert ({reason}; PayPal-Prüfung: {paypal_reason})")
                 continue
             if request["request_id"] in processed or any(
                 str(item.get("request_id")) == request["request_id"]
