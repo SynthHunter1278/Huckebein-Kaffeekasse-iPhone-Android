@@ -36,9 +36,26 @@ def main():
             normalized = "".join(ch for ch in mailbox_name.casefold() if ch.isalnum())
             if "hanshuckebein" in normalized and "kaffeekasse" in normalized:
                 candidates.append(mailbox_name)
-        if len(candidates) != 1:
-            raise RuntimeError("Erwartet genau einen Yahoo-Kassenordner; Trefferanzahl: " + str(len(candidates)))
-        mailbox = candidates[0]
+        if not candidates:
+            raise RuntimeError("Kein passender Yahoo-Kassenordner gefunden")
+        # Bei mehreren Namens-Treffern jeden Kandidaten ausdrücklich readonly
+        # prüfen und den Ordner mit den passenden Kassenmails bestimmen.
+        candidate_counts = {}
+        for candidate in candidates:
+            candidate_status, _ = mail.select('"' + candidate + '"', readonly=True)
+            if candidate_status != "OK":
+                candidate_counts[candidate] = "nicht lesbar"
+                continue
+            matches = processor.search_all_relevant_uids(mail)
+            candidate_counts[candidate] = len(matches)
+        populated = [name for name, count in candidate_counts.items() if isinstance(count, int) and count > 0]
+        if len(populated) == 1:
+            mailbox = populated[0]
+        elif len(candidates) == 1:
+            mailbox = candidates[0]
+        else:
+            details = "; ".join(f"{name}: {count}" for name, count in candidate_counts.items())
+            raise RuntimeError("Yahoo-Ordner nicht eindeutig; passende Nachrichten je Ordner: " + details)
         status, count_data = mail.select('"' + mailbox + '"', readonly=True)
         if status != "OK":
             raise RuntimeError("Kassenordner konnte nicht schreibgeschützt geöffnet werden")
