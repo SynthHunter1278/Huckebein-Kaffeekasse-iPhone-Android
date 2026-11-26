@@ -48,6 +48,26 @@ def main():
                 continue
             matches = processor.search_all_relevant_uids(mail)
             candidate_counts[candidate] = len(matches)
+            all_candidate_uids = uid_search(mail, "ALL")
+            latest_date = "keine Nachrichten"
+            if all_candidate_uids:
+                latest_status, latest_data = mail.uid(
+                    "fetch", str(all_candidate_uids[-1]), "(BODY.PEEK[HEADER.FIELDS (DATE SUBJECT)])"
+                )
+                if latest_status == "OK" and latest_data:
+                    latest_raw = next(
+                        (item[1] for item in latest_data if isinstance(item, tuple) and isinstance(item[1], bytes)),
+                        None
+                    )
+                    if latest_raw:
+                        latest_header = email.message_from_bytes(latest_raw)
+                        latest_date = str(latest_header.get("Date", "Datum unbekannt"))
+            print(
+                "MAILBOX_CANDIDATE"
+                + " | TOTAL_MESSAGES=" + str(len(all_candidate_uids or []))
+                + " | RELEVANT_MESSAGES=" + str(len(matches))
+                + " | LATEST_DATE=" + latest_date
+            )
         populated = [name for name, count in candidate_counts.items() if isinstance(count, int) and count > 0]
         if len(populated) == 1:
             mailbox = populated[0]
