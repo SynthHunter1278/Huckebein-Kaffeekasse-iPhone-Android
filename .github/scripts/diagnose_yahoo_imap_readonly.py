@@ -100,10 +100,21 @@ def main():
                 kinds.append("BREAKFAST_SUBJECT")
             if "SPENDERANMELDUNG" in subject_upper and "KAFFEE SPENDIEREN" in subject_upper:
                 kinds.append("SPONSOR_SUBJECT")
+            body_upper = message_text(msg).upper().replace("Ü", "UE")
+            safe_flags = {
+                "SUBJECT_KAFFEEKASSE": "KAFFEEKASSE" in subject_upper,
+                "SUBJECT_BREAKFAST": "FRUEHSTUECKSBUCHUNG" in subject_upper or "FREITAGSFRUEHSTUECK" in subject_upper,
+                "SUBJECT_SPONSOR": "SPENDERANMELDUNG" in subject_upper,
+                "BODY_KAFFEEKASSE": "KAFFEEKASSE" in body_upper,
+                "BODY_BREAKFAST": "FRUEHSTUECKSBUCHUNG" in body_upper or "FREITAGSFRUEHSTUECK" in body_upper,
+                "BODY_SPONSOR": "SPENDERANMELDUNG" in body_upper,
+            }
             print(
                 "MESSAGE UID " + str(uid)
                 + " | RECIPIENT_MATCH=" + str(recipient_ok)
-                + " | TYPE=" + (",".join(kinds) if kinds else "OTHER")
+                + " | DATE=" + str(msg.get("Date", ""))
+                + " | FLAGS=" + str(safe_flags)
+                + " | BODY_CHARS=" + str(len(body_upper))
                 + " | BREAKFAST=" + ("PARSED" if breakfast else breakfast_reason)
                 + " | SPONSOR=" + ("PARSED" if sponsor else sponsor_reason)
             )
