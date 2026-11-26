@@ -72,11 +72,11 @@
   },
   "happyHour": {
     "aktiv": true,
-    "datum": "2026-11-25",
+    "datum": "2026-11-26",
     "start": "10:00",
     "ende": "11:00",
     "artikel": {
-      "btn-kaffee": 5
+      "btn-kaffee": 0.2
     }
   }
 }
