@@ -100,7 +100,7 @@ def main():
                 kinds.append("BREAKFAST_SUBJECT")
             if "SPENDERANMELDUNG" in subject_upper and "KAFFEE SPENDIEREN" in subject_upper:
                 kinds.append("SPONSOR_SUBJECT")
-            body_upper = message_text(msg).upper().replace("Ü", "UE")
+            body_upper = processor.message_text(msg).upper().replace("Ü", "UE")
             safe_flags = {
                 "SUBJECT_KAFFEEKASSE": "KAFFEEKASSE" in subject_upper,
                 "SUBJECT_BREAKFAST": "FRUEHSTUECKSBUCHUNG" in subject_upper or "FREITAGSFRUEHSTUECK" in subject_upper,
