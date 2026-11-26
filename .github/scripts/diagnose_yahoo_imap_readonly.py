@@ -24,7 +24,21 @@ def main():
     mail = imaplib.IMAP4_SSL("imap.mail.yahoo.com", 993)
     try:
         mail.login(account, password)
-        mailbox = processor.find_hans_huckebein_mailbox(mail)
+        list_status, folders = mail.list()
+        if list_status != "OK" or not folders:
+            raise RuntimeError("Yahoo-Ordnerliste konnte nicht abgerufen werden")
+        candidates = []
+        for raw in folders:
+            line = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else str(raw)
+            end_quote = line.rfind('"')
+            start_quote = line.rfind('"', 0, end_quote)
+            mailbox_name = line[start_quote + 1:end_quote] if start_quote >= 0 and end_quote > start_quote else line.rsplit(" ", 1)[-1].strip('"')
+            normalized = "".join(ch for ch in mailbox_name.casefold() if ch.isalnum())
+            if "hanshuckebein" in normalized and "kaffeekasse" in normalized:
+                candidates.append(mailbox_name)
+        if len(candidates) != 1:
+            raise RuntimeError("Erwartet genau einen Yahoo-Kassenordner; Trefferanzahl: " + str(len(candidates)))
+        mailbox = candidates[0]
         status, count_data = mail.select('"' + mailbox + '"', readonly=True)
         if status != "OK":
             raise RuntimeError("Kassenordner konnte nicht schreibgeschützt geöffnet werden")
