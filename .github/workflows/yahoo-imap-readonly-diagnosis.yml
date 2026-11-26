@@ -1,0 +1,33 @@
+name: Yahoo IMAP read-only diagnosis
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yahoo-imap-readonly-diagnosis
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out diagnostic branch
+        uses: actions/checkout@v4
+        with:
+          ref: diagnostic/yahoo-imap-readonly
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run read-only Yahoo IMAP diagnosis
+        env:
+          YAHOO_EMAIL: ${{ secrets.YAHOO_EMAIL }}
+          YAHOO_APP_PASSWORD: ${{ secrets.YAHOO_APP_PASSWORD }}
+        run: python .github/scripts/diagnose_yahoo_imap_readonly.py
