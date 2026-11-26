@@ -23,7 +23,7 @@
   },
   "nachricht": {
     "aktiv": true,
-    "text": "Update: Happy Hour Funktion",
+    "text": "Testnachricht 01",
     "typ": "info"
   },
   "preise": {
@@ -54,7 +54,7 @@
     "aktiv": true
   },
   "letzteNachricht": {
-    "text": "Benutzt bitte eure App",
+    "text": "Update: Happy Hour Funktion",
     "typ": "info"
   },
   "sonderartikel": {
