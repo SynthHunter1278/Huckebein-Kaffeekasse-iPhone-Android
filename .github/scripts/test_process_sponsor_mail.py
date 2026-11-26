@@ -285,6 +285,11 @@ class SponsorMailTests(unittest.TestCase):
             [{"id": "same-uid", "request_id": ""}],
         ))
 
+    def test_archived_paypal_entry_is_still_a_duplicate(self):
+        archived = {"id": "old-uid", "request_id": "PP-ARCHIVED-123"}
+        replayed = {"id": "new-uid", "request_id": "PP-ARCHIVED-123"}
+        self.assertTrue(sponsor_mail.is_duplicate_paypal_entry(replayed, [archived]))
+
     def test_paypal_not_paid_decision(self):
         msg = make_mail(
             "KAFFEEKASSE - PAYPAL-AUFLADUNG",

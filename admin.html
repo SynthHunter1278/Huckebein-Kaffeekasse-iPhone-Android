@@ -349,8 +349,12 @@
                     <h2>💳 PayPal-Aufladeprotokoll</h2>
                     <p class="small-note">Zentrale Liste der per E-Mail gemeldeten Teilnehmerbestätigungen.</p>
                     <button type="button" class="btn-resend" onclick="loadPaypalLog()">↻ Protokoll aktualisieren</button>
+                    <button type="button" class="btn-resend" onclick="archivePaypalEntries()" style="background:#166534;border-color:#4ade80;">✓ Übertragene Einträge archivieren</button>
                     <div id="paypalLogSummary" class="settlement-preview">Noch nicht geladen.</div>
                     <div id="paypalLogTable" style="overflow-x:auto;"></div>
+                    <h3 style="font-size:13px;color:#a9c5dc;margin:18px 0 8px;">📁 Archivierte PayPal-Aufladungen</h3>
+                    <div id="paypalArchiveSummary" class="small-note">Archiv wird geladen...</div>
+                    <div id="paypalArchiveTable" style="overflow-x:auto;"></div>
                 </div>
             </section>
             <section class="page-panel" data-admin-panel="freikaffee" hidden>
@@ -358,6 +362,7 @@
                     <h2>☕ Freikaffee – abgerufene Kaffees</h2>
                     <p class="small-note">Hier werden nur tatsächlich abgerufene Gratis-Kaffees während einer aktiven Kaffee-Spendenaktion gezählt.</p>
                     <button type="button" class="btn-resend" onclick="loadFreeCoffeeLog()">↻ Statistik aktualisieren</button>
+                    <button type="button" class="btn-resend" onclick="clearFreeCoffeeLog()" style="background:#7f1d1d;border-color:#f87171;">Einträge entfernen</button>
                     <div id="freeCoffeeLogSummary" class="settlement-preview">Noch nicht geladen.</div>
                     <div id="freeCoffeeLogTable" style="overflow-x:auto;"></div>
                 </div>
@@ -367,6 +372,7 @@
                     <h2>🍳 Freitagsfrühstück – Buchungen</h2>
                     <p class="small-note">Hier erscheinen die erfolgreich per E-Mail gemeldeten Frühstücksbuchungen. Die Liste wird zentral im Repository gespeichert.</p>
                     <button type="button" class="btn-resend" onclick="loadBreakfastLog()">↻ Buchungen aktualisieren</button>
+                    <button type="button" class="btn-resend" onclick="clearBreakfastLog()" style="background:#7f1d1d;border-color:#f87171;">Frühstücksmeldungen löschen</button>
                     <div id="breakfastLogSummary" class="settlement-preview">Noch nicht geladen.</div>
                     <div id="breakfastLogTable" style="overflow-x:auto;"></div>
                 </div>
@@ -633,17 +639,54 @@
     }
 
 
+    async function writeRepositoryJson(path, value, message) {
+        if (!checkCredentials()) throw new Error("GitHub-Zugang fehlt.");
+        const url = `https://api.github.com/repos/${githubUser}/${githubRepo}/contents/${path}`;
+        const getResponse = await fetchGetWithRetry(url + "?cb=" + Date.now(), {
+            method: "GET", headers: githubHeaders(), cache: "no-store"
+        }, 3);
+        const current = await readApiJson(getResponse);
+        if (!current.sha || !current.content) throw new Error(path + " konnte nicht sicher gelesen werden.");
+        const bytes = new TextEncoder().encode(JSON.stringify(value, null, 2) + "\n");
+        const content = btoa(Array.from(bytes, b => String.fromCharCode(b)).join(""));
+        const response = await fetch(url, {
+            method: "PUT",
+            headers: { ...githubHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ message, content, sha: current.sha })
+        });
+        await readApiJson(response);
+    }
+
     async function loadFreeCoffeeLog() {
         const summary = document.getElementById("freeCoffeeLogSummary");
         summary.textContent = "Lade Freikaffee-Entnahmen...";
         try {
             const data = await loadRepositoryJson("free-coffee-log.json");
             const entries = Array.isArray(data.entries) ? data.entries : [];
-            summary.textContent = entries.length + " Freikaffee(s) insgesamt abgerufen.";
-            renderLogTable(entries, "freeCoffeeLogTable", "Noch keine Freikaffee-Entnahmen vorhanden.", "breakfast");
+            summary.textContent = entries.length + " Freikaffee(s) im aktuellen Protokoll.";
+            renderLogTable(entries, "freeCoffeeLogTable", "Keine Freikaffee-Entnahmen vorhanden.", "breakfast");
         } catch (error) {
             summary.textContent = "Freikaffee-Statistik konnte nicht geladen werden: " + error.message;
         }
+    }
+
+    async function clearFreeCoffeeLog() {
+        if (!confirm("Freikaffee-Einträge wirklich entfernen? Eine aktive oder noch offene Spenderabrechnung wird dabei geschützt.")) return;
+        const button = document.querySelector('[onclick="clearFreeCoffeeLog()"]');
+        if (button) button.disabled = true;
+        try {
+            const config = await loadRepositoryJson("config.json");
+            const birthday = config.geburtstag || {};
+            const settlement = birthday.abrechnung || {};
+            if (birthday.aktiv || settlement.status === "offen") {
+                throw new Error("Die Kaffeeaktion ist noch aktiv oder die Spenderabrechnung noch offen. Erst nach abgeschlossener Abrechnung löschen.");
+            }
+            await writeRepositoryJson("free-coffee-log.json", { entries: [] }, "Kaffeekasse: Freikaffee-Protokoll manuell geleert");
+            showStatus("Freikaffee-Liste geleert. Die verarbeiteten E-Mail-IDs und die Dubletten-Sicherung bleiben erhalten.", true);
+            await loadFreeCoffeeLog();
+        } catch (error) {
+            showStatus("Freikaffee konnte nicht geleert werden: " + error.message, false);
+        } finally { if (button) button.disabled = false; }
     }
 
     async function loadBreakfastLog() {
@@ -652,24 +695,79 @@
         try {
             const data = await loadRepositoryJson("breakfast-log.json");
             const entries = Array.isArray(data.entries) ? data.entries : [];
-            summary.textContent = entries.length + " Frühstücksbuchung(en) insgesamt.";
-            renderLogTable(entries, "breakfastLogTable", "Noch keine Frühstücksbuchungen vorhanden.", "breakfast");
+            summary.textContent = entries.length + " Frühstücksbuchung(en) in der Liste.";
+            renderLogTable(entries, "breakfastLogTable", "Keine Frühstücksbuchungen vorhanden.", "breakfast");
         } catch (error) {
             summary.textContent = "Frühstücksprotokoll konnte nicht geladen werden: " + error.message;
         }
+    }
+
+    async function clearBreakfastLog() {
+        if (!confirm("Alle aktuell angezeigten Frühstücksmeldungen löschen? Bereits verarbeitete Meldungen werden nicht erneut eingetragen.")) return;
+        const button = document.querySelector('[onclick="clearBreakfastLog()"]');
+        if (button) button.disabled = true;
+        try {
+            await writeRepositoryJson("breakfast-log.json", { entries: [] }, "Kaffeekasse: Frühstücksliste manuell geleert");
+            showStatus("Frühstücksliste geleert. Die Dubletten-Sicherung bleibt erhalten.", true);
+            await loadBreakfastLog();
+        } catch (error) {
+            showStatus("Frühstücksliste konnte nicht geleert werden: " + error.message, false);
+        } finally { if (button) button.disabled = false; }
     }
 
     async function loadPaypalLog() {
         const summary = document.getElementById("paypalLogSummary");
         summary.textContent = "Lade PayPal-Aufladungen...";
         try {
-            const data = await loadRepositoryJson("paypal-log.json");
-            const entries = Array.isArray(data.entries) ? data.entries : [];
-            summary.textContent = entries.length + " PayPal-Aufladung(en) insgesamt.";
-            renderLogTable(entries, "paypalLogTable", "Noch keine PayPal-Aufladungen vorhanden.", "paypal");
+            const [data, archive] = await Promise.all([
+                loadRepositoryJson("paypal-log.json"),
+                loadRepositoryJson("paypal-archive.json")
+            ]);
+            const activeEntries = Array.isArray(data.entries) ? data.entries : [];
+            const archivedEntries = Array.isArray(archive.entries) ? archive.entries : [];
+            const archivedIds = new Set(archivedEntries.map(entry => String(entry.id || entry.request_id || "")));
+            const visibleEntries = activeEntries.filter(entry => !archivedIds.has(String(entry.id || entry.request_id || "")));
+            summary.textContent = visibleEntries.length + " nicht archivierte PayPal-Aufladung(en).";
+            renderLogTable(visibleEntries, "paypalLogTable", "Keine offenen PayPal-Aufladungen vorhanden.", "paypal");
+            document.getElementById("paypalArchiveSummary").textContent = archivedEntries.length + " archivierte PayPal-Aufladung(en).";
+            renderLogTable(archivedEntries, "paypalArchiveTable", "Das Archiv ist noch leer.", "paypal");
         } catch (error) {
             summary.textContent = "PayPal-Protokoll konnte nicht geladen werden: " + error.message;
         }
+    }
+
+    async function archivePaypalEntries() {
+        if (!confirm("Alle aktuell nicht archivierten PayPal-Einträge ins dauerhafte Archiv übernehmen? Bitte erst nach der Übertragung in Excel bestätigen.")) return;
+        const button = document.querySelector('[onclick="archivePaypalEntries()"]');
+        if (button) button.disabled = true;
+        try {
+            const [current, archive] = await Promise.all([
+                loadRepositoryJson("paypal-log.json"),
+                loadRepositoryJson("paypal-archive.json")
+            ]);
+            const activeEntries = Array.isArray(current.entries) ? current.entries : [];
+            const archivedEntries = Array.isArray(archive.entries) ? archive.entries : [];
+            const known = new Set(archivedEntries.map(entry => String(entry.id || entry.request_id || "")));
+            const toArchive = activeEntries.filter(entry => !known.has(String(entry.id || entry.request_id || "")));
+            if (!toArchive.length) {
+                showStatus("Es gibt keine neuen PayPal-Einträge zum Archivieren.", true);
+                return;
+            }
+            const merged = [...archivedEntries, ...toArchive];
+            await writeRepositoryJson("paypal-archive.json", { entries: merged }, "Kaffeekasse: PayPal-Einträge archiviert");
+            // Aktuelle Liste nach dem Archiv-Commit erneut lesen: neue Worker-Einträge bleiben erhalten.
+            const latestCurrent = await loadRepositoryJson("paypal-log.json");
+            const archivedIdSet = new Set(merged.map(entry => String(entry.id || entry.request_id || "")));
+            const remainingEntries = (Array.isArray(latestCurrent.entries) ? latestCurrent.entries : [])
+                .filter(entry => !archivedIdSet.has(String(entry.id || entry.request_id || "")));
+            // Bei einem parallelen Worker-Commit schützt GitHub-SHA-Konflikterkennung vor Überschreiben.
+            await writeRepositoryJson("paypal-log.json", { entries: remainingEntries }, "Kaffeekasse: archivierte PayPal-Einträge aus aktueller Liste entfernt");
+            showStatus(toArchive.length + " PayPal-Einträge wurden archiviert. Das Archiv bleibt dauerhaft einsehbar.", true);
+            await loadPaypalLog();
+        } catch (error) {
+            showStatus("Archivierung nicht vollständig abgeschlossen: " + error.message + ". Bitte Protokoll aktualisieren; bereits archivierte Einträge werden nicht doppelt angezeigt.", false);
+            try { await loadPaypalLog(); } catch (_) {}
+        } finally { if (button) button.disabled = false; }
     }
 
     async function saveAndPushConfig() {
