@@ -1,8 +1,8 @@
 {
   "geburtstag": {
-    "aktiv": false,
-    "spender": "Dirk W",
-    "datum": "2026-11-26",
+    "aktiv": true,
+    "spender": "Uwe Töbermann",
+    "datum": "2026-11-27",
     "abrechnung": {
       "id": "KAFFEE-20261126-1-L9U8XT",
       "spender": "Dirk W",
@@ -16,9 +16,9 @@
       "aktionsId": "KAFFEE-20261126-070611-1-L9U8XT",
       "quelle": "Freikaffee-Protokoll"
     },
-    "aktionsId": "KAFFEE-20261126-070611-1-L9U8XT",
-    "sperreBis": "2026-11-27T06:00:00+01:00",
-    "freigabeZeitpunkt": "2026-11-26T07:06:11+01:00",
+    "aktionsId": "KAFFEE-20261127-061321-9-XCNT01",
+    "sperreBis": "2026-11-28T06:00:00+01:00",
+    "freigabeZeitpunkt": "2026-11-27T06:13:21+01:00",
     "automatischFreigegeben": true
   },
   "nachricht": {
